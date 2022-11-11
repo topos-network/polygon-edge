@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "/messages/proto";
+
+// MessageType defines the types of messages
+// circulating in the system
+enum MessageType {
+  GREET = 0;
+}
+
+// Message defines the base message structure
+message Message {
+
+  // from defines who is the message sender
+  bytes from = 1;
+
+  // type defines the message type
+  MessageType type = 2;
+}

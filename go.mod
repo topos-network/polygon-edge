@@ -61,6 +61,10 @@ require (
 
 require github.com/0xPolygon/go-ibft v0.0.0-20220810095021-e43142f8d267
 
+// replace (
+//     github.com/0xPolygon/go-ibft => /home/amarko/radni/toposware/polygon/go-ibft
+// )
+
 require gopkg.in/DataDog/dd-trace-go.v1 v1.43.1
 
 require (

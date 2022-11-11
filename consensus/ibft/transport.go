@@ -12,7 +12,8 @@ type transport interface {
 }
 
 type gossipTransport struct {
-	topic *network.Topic
+	topic      *network.Topic
+	topicFrost *network.Topic
 }
 
 func (g *gossipTransport) Multicast(msg *proto.Message) error {
@@ -27,8 +28,14 @@ func (i *backendIBFT) Multicast(msg *proto.Message) {
 
 // setupTransport sets up the gossip transport protocol
 func (i *backendIBFT) setupTransport() error {
-	// Define a new topic
+	// Define a new topic for ibft
 	topic, err := i.network.NewTopic(ibftProto, &proto.Message{})
+	if err != nil {
+		return err
+	}
+
+	// Define a new topic for frost
+	topicFrost, err := i.network.NewTopic(frostProto, &proto.Message{})
 	if err != nil {
 		return err
 	}
@@ -61,7 +68,7 @@ func (i *backendIBFT) setupTransport() error {
 		return err
 	}
 
-	i.transport = &gossipTransport{topic: topic}
+	i.transport = &gossipTransport{topic: topic, topicFrost: topicFrost}
 
 	return nil
 }

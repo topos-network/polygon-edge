@@ -8,6 +8,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/blockchain"
 	"github.com/0xPolygon/polygon-edge/consensus"
 	"github.com/0xPolygon/polygon-edge/consensus/ibft/fork"
+	"github.com/0xPolygon/polygon-edge/consensus/ibft/frost"
 	"github.com/0xPolygon/polygon-edge/consensus/ibft/proto"
 	"github.com/0xPolygon/polygon-edge/consensus/ibft/signer"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
@@ -27,7 +28,8 @@ const (
 	IbftKeyName      = "validator.key"
 	KeyEpochSize     = "epochSize"
 
-	ibftProto = "/ibft/0.2"
+	ibftProto  = "/ibft/0.2"
+	frostProto = "/frost/0.1"
 )
 
 var (
@@ -74,6 +76,7 @@ type backendIBFT struct {
 	Grpc           *grpc.Server           // Reference to the gRPC manager
 	operator       *operator              // Reference to the gRPC service of IBFT
 	transport      transport              // Reference to the transport protocol
+	frost          frost.Frost            // Reference to Frost manager
 
 	// Dynamic References
 	forkManager       forkManagerInterface  // Manager to hold IBFT Forks
@@ -174,6 +177,8 @@ func (i *backendIBFT) Initialize() error {
 		i.operator = &operator{ibft: i}
 		proto.RegisterIbftOperatorServer(i.Grpc, i.operator)
 	}
+
+	fmt.Println(">>>>>> Starting a transport protocol...")
 
 	// start the transport protocol
 	if err := i.setupTransport(); err != nil {
