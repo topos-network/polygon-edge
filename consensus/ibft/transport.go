@@ -1,7 +1,8 @@
 package ibft
 
 import (
-	"github.com/0xPolygon/go-ibft/messages/proto"
+	proto "github.com/0xPolygon/go-ibft/messages/proto"
+	protoFrost "github.com/0xPolygon/polygon-edge/consensus/ibft/frost/messages"
 	"github.com/0xPolygon/polygon-edge/network"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -9,6 +10,7 @@ import (
 
 type transport interface {
 	Multicast(msg *proto.Message) error
+	MulticastFrost(msg *protoFrost.Message) error
 }
 
 type gossipTransport struct {
@@ -20,9 +22,19 @@ func (g *gossipTransport) Multicast(msg *proto.Message) error {
 	return g.topic.Publish(msg)
 }
 
+func (g *gossipTransport) MulticastFrost(msg *protoFrost.Message) error {
+	return g.topicFrost.Publish(msg)
+}
+
 func (i *backendIBFT) Multicast(msg *proto.Message) {
 	if err := i.transport.Multicast(msg); err != nil {
 		i.logger.Error("fail to gossip", "err", err)
+	}
+}
+
+func (i *backendIBFT) MulticastFrost(msg *protoFrost.Message) {
+	if err := i.transport.MulticastFrost(msg); err != nil {
+		i.logger.Error("fail to gossip frost message ", "err", err)
 	}
 }
 
@@ -35,7 +47,7 @@ func (i *backendIBFT) setupTransport() error {
 	}
 
 	// Define a new topic for frost
-	topicFrost, err := i.network.NewTopic(frostProto, &proto.Message{})
+	topicFrost, err := i.network.NewTopic(frostProto, &protoFrost.Message{})
 	if err != nil {
 		return err
 	}

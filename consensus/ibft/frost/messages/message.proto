@@ -5,7 +5,11 @@ option go_package = "/messages/proto";
 // MessageType defines the types of messages
 // circulating in the system
 enum MessageType {
-  GREET = 0;
+  NEW_ROUND = 0;
+  KEY_GENERATION = 1;
+  SIGNING = 2;
+  FINISHED = 3;
+
 }
 
 // Message defines the base message structure

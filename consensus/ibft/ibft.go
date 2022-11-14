@@ -76,7 +76,7 @@ type backendIBFT struct {
 	Grpc           *grpc.Server           // Reference to the gRPC manager
 	operator       *operator              // Reference to the gRPC service of IBFT
 	transport      transport              // Reference to the transport protocol
-	frost          frost.Frost            // Reference to Frost manager
+	frost          *frost.FrostConsensus  // Reference to Frost consensus handler
 
 	// Dynamic References
 	forkManager       forkManagerInterface  // Manager to hold IBFT Forks
@@ -154,7 +154,6 @@ func Factory(params *consensus.Params) (consensus.Consensus, error) {
 		secretsManager: params.SecretsManager,
 		Grpc:           params.Grpc,
 		forkManager:    forkManager,
-
 		// Configurations
 		config:             params.Config,
 		epochSize:          epochSize,
@@ -199,6 +198,11 @@ func (i *backendIBFT) Initialize() error {
 	i.consensus = newIBFT(
 		i.logger.Named("consensus"),
 		i,
+		i,
+	)
+
+	i.frost = frost.NewFrostConsensus(
+		i.logger.Named("frost"),
 		i,
 	)
 
@@ -284,6 +288,17 @@ func (i *backendIBFT) startConsensus() {
 		isValidator bool
 	)
 
+	// Generate Frost DPKG keys
+	var (
+		frostDKGCh = make(<-chan struct{})
+	)
+	frostDKGCh = i.frost.RunDKGSequence()
+	select {
+	case <-frostDKGCh:
+		fmt.Println(">>>>>>> Frost keys generated for current validators:", i.currentValidators)
+	}
+
+	fmt.Println(">>>>>>> Entering loop:")
 	for {
 		var (
 			latest  = i.blockchain.Header().Number
@@ -314,8 +329,14 @@ func (i *backendIBFT) startConsensus() {
 			if isValidator {
 				i.consensus.stopSequence()
 				i.logger.Info("canceled sequence", "sequence", pending)
+				// Run frost signer consensus
+				i.frost.RunFrostSigningSequence(i.blockchain.Header().Number)
 			}
 		case <-sequenceCh:
+			fmt.Println(">>>>>>> Returned from Sequence Channel height:", i.blockchain.Header().Number)
+			// Run frost signer consensus
+			i.frost.RunFrostSigningSequence(i.blockchain.Header().Number)
+
 		case <-i.closeCh:
 			if isValidator {
 				i.consensus.stopSequence()
@@ -546,7 +567,22 @@ func (i *backendIBFT) updateCurrentModules(height uint64) error {
 	}
 
 	i.currentSigner = signer
+
+	var performDKG bool = i.currentValidators != validators
+	// fmt.Println("CURRENT VALIDATORS: ", i.currentValidators, " VALIDATORS ", validators, " performDKG: ", performDKG)
 	i.currentValidators = validators
+	if performDKG && i.frost != nil {
+		// Generate Frost DPKG keys
+		var (
+			frostDKGCh = make(<-chan struct{})
+		)
+		frostDKGCh = i.frost.RunDKGSequence()
+		select {
+		case <-frostDKGCh:
+			fmt.Println(">>>>>>> Frost keys generated...")
+		}
+	}
+
 	i.currentHooks = hooks
 
 	i.logFork(lastSigner, signer)
