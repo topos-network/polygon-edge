@@ -57,7 +57,6 @@ type Frost struct {
 
 // NewForkManager is a constructor of ForkManager
 func NewFrost(logger core.Logger, transport Transport) *Frost {
-
 	fm := &Frost{
 		log:       logger,
 		transport: transport,
@@ -79,77 +78,14 @@ func (i *Frost) DKGSequence(ctx context.Context) {
 
 	i.log.Info("Frost DKG sequence started")
 	defer i.log.Info("Frost DKG sequence done")
-
-	// for {
-	// 	view := i.state.getView()
-
-	// 	i.log.Info("round started", "round", view.Round)
-
-	// 	currentRound := view.Round
-	// 	ctxRound, cancelRound := context.WithCancel(ctx)
-
-	// 	i.wg.Add(4)
-
-	// 	// Start the round timer worker
-	// 	go i.startRoundTimer(ctxRound, currentRound)
-
-	// 	//	Jump round on proposals from higher rounds
-	// 	go i.watchF
-	// 	orFutureProposal(ctxRound)
-
-	// 	//	Jump round on certificates
-	// 	go i.watchForRoundChangeCertificates(ctxRound)
-
-	// 	// Start the state machine worker
-	// 	go i.startRound(ctxRound)
-
-	// 	teardown := func() {
-	// 		cancelRound()
-	// 		i.wg.Wait()
-	// 	}
-
-	// 	select {
-	// 	case ev := <-i.newProposal:
-	// 		teardown()
-	// 		i.log.Info("received future proposal", "round", ev.round)
-
-	// 		i.moveToNewRound(ev.round)
-	// 		i.acceptProposal(ev.proposalMessage)
-	// 		i.state.setRoundStarted(true)
-	// 	case round := <-i.roundCertificate:
-	// 		teardown()
-	// 		i.log.Info("received future RCC", "round", round)
-
-	// 		i.moveToNewRound(round)
-	// 	case <-i.roundExpired:
-	// 		teardown()
-	// 		i.log.Info("round timeout expired", "round", currentRound)
-
-	// 		newRound := currentRound + 1
-	// 		i.moveToNewRound(newRound)
-
-	// 		i.sendRoundChangeMessage(h, newRound)
-	// 	case <-i.roundDone:
-	// 		// The consensus cycle for the block height is finished.
-	// 		// Stop all running worker threads
-	// 		teardown()
-
-	// 		return
-	// 	case <-ctx.Done():
-	// 		teardown()
-	// 		i.log.Debug("sequence cancelled")
-
-	// 		return
-	// 	}
-	// }
 }
 
 // SigningSequence runs the Frost sequence for the specified height
 func (i *Frost) SigningSequence(ctx context.Context, h uint64) {
 	// Set the starting state data
+	defer i.log.Info("Frost signing sequence done", "height", h)
 	i.state.clear()
 	i.log.Info("Frost signing sequence started", "height", h)
-	defer i.log.Info("Frost signing sequence done", "height", h)
 }
 
 // IBFTConsensus is a convenience wrapper for the go-ibft package

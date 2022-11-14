@@ -130,7 +130,6 @@ func (s *systemService) getPeer(id peer.ID) (*proto.Peer, error) {
 		Protocols: protocols,
 		Addrs:     addrs,
 	}
-	fmt.Println(">>>>>> Protocols: ", protocols)
 
 	return peer, nil
 }

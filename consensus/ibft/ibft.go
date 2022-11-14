@@ -290,15 +290,13 @@ func (i *backendIBFT) startConsensus() {
 
 	// Generate Frost DPKG keys
 	var (
-		frostDKGCh = make(<-chan struct{})
+		frostDKGCh = i.frost.RunDKGSequence()
 	)
-	frostDKGCh = i.frost.RunDKGSequence()
 	select {
 	case <-frostDKGCh:
 		fmt.Println(">>>>>>> Frost keys generated for current validators:", i.currentValidators)
 	}
 
-	fmt.Println(">>>>>>> Entering loop:")
 	for {
 		var (
 			latest  = i.blockchain.Header().Number
@@ -574,9 +572,8 @@ func (i *backendIBFT) updateCurrentModules(height uint64) error {
 	if performDKG && i.frost != nil {
 		// Generate Frost DPKG keys
 		var (
-			frostDKGCh = make(<-chan struct{})
+			frostDKGCh = i.frost.RunDKGSequence()
 		)
-		frostDKGCh = i.frost.RunDKGSequence()
 		select {
 		case <-frostDKGCh:
 			fmt.Println(">>>>>>> Frost keys generated...")

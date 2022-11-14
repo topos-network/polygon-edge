@@ -604,8 +604,6 @@ func (s *Server) NewProtoConnection(protocol string, peerID peer.ID) (*rawGrpc.C
 		return nil, fmt.Errorf("protocol not found: %s", protocol)
 	}
 
-	fmt.Println(">>>>>> Protocols p: ", p)
-
 	stream, err := s.NewStream(protocol, peerID)
 	if err != nil {
 		return nil, err
@@ -624,7 +622,6 @@ type Protocol interface {
 }
 
 func (s *Server) RegisterProtocol(id string, p Protocol) {
-	fmt.Println(">>>>>> Register protocol: ", id)
 	s.protocolsLock.Lock()
 	defer s.protocolsLock.Unlock()
 
