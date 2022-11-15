@@ -4,7 +4,7 @@ option go_package = "/messages/proto";
 
 // MessageType defines the types of messages
 // circulating in the system
-enum MessageType {
+enum FrostMessageType {
   NEW_ROUND = 0;
   KEY_GENERATION = 1;
   SIGNING = 2;
@@ -13,11 +13,14 @@ enum MessageType {
 }
 
 // Message defines the base message structure
-message Message {
+message FrostMessage {
 
   // from defines who is the message sender
   bytes from = 1;
 
   // type defines the message type
-  MessageType type = 2;
+  FrostMessageType type = 2;
+
+  // data sent in the message
+  bytes data = 3;
 }

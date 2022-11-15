@@ -202,6 +202,7 @@ func (i *backendIBFT) Initialize() error {
 	)
 
 	i.frost = frost.NewFrostConsensus(
+		i.ID(),
 		i.logger.Named("frost"),
 		i,
 	)
@@ -288,14 +289,25 @@ func (i *backendIBFT) startConsensus() {
 		isValidator bool
 	)
 
-	// Generate Frost DPKG keys
-	var (
-		frostDKGCh = i.frost.RunDKGSequence()
-	)
-	select {
-	case <-frostDKGCh:
-		fmt.Println(">>>>>>> Frost keys generated for current validators:", i.currentValidators)
-	}
+	go func() {
+		time.Sleep(1000 * time.Millisecond)
+		fmt.Println(">>>>>>> CHECKPOINT 1:")
+		// Implement appropriate tool to wait for all validators to generate keys
+		for len(i.network.Peers()) < i.currentValidators.Len()-1 {
+			println(">>>>>>>>>> Waiting for peers to be connected")
+			time.Sleep(1000 * time.Millisecond)
+		}
+		println(">>>>>>>>>> Generating FROST key")
+		// Generate Frost DPKG keys
+		var (
+			frostDKGCh = i.frost.RunDKGSequence(i.currentValidators)
+		)
+		select {
+		case <-frostDKGCh:
+			fmt.Println(">>>>>>> Frost keys generated for current validators:", i.currentValidators)
+		}
+		fmt.Println(">>>>>>> CHECKPOINT 2:")
+	}()
 
 	for {
 		var (
@@ -312,6 +324,7 @@ func (i *backendIBFT) startConsensus() {
 		}
 
 		// Update the No.of validator metric
+		fmt.Println(">>>>>>>>>>>>>> Current validators: ", i.currentValidators.Len(), " peers:", i.network.Peers())
 		metrics.SetGauge([]string{"validators"}, float32(i.currentValidators.Len()))
 
 		isValidator = i.isActiveValidator()
@@ -566,19 +579,19 @@ func (i *backendIBFT) updateCurrentModules(height uint64) error {
 
 	i.currentSigner = signer
 
-	var performDKG bool = i.currentValidators != validators
+	// var performDKG bool = i.currentValidators != validators
 	// fmt.Println("CURRENT VALIDATORS: ", i.currentValidators, " VALIDATORS ", validators, " performDKG: ", performDKG)
 	i.currentValidators = validators
-	if performDKG && i.frost != nil {
-		// Generate Frost DPKG keys
-		var (
-			frostDKGCh = i.frost.RunDKGSequence()
-		)
-		select {
-		case <-frostDKGCh:
-			fmt.Println(">>>>>>> Frost keys generated...")
-		}
-	}
+	// if performDKG && i.frost != nil {
+	// 	// Generate Frost DPKG keys
+	// 	var (
+	// 		frostDKGCh = i.frost.RunDKGSequence(i.currentValidators)
+	// 	)
+	// 	select {
+	// 	case <-frostDKGCh:
+	// 		fmt.Println(">>>>>>> Frost keys generated in updateCurrentModules...")
+	// 	}
+	// }
 
 	i.currentHooks = hooks
 

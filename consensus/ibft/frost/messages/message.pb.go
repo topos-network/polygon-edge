@@ -22,24 +22,24 @@ const (
 
 // MessageType defines the types of messages
 // circulating in the system
-type MessageType int32
+type FrostMessageType int32
 
 const (
-	MessageType_NEW_ROUND      MessageType = 0
-	MessageType_KEY_GENERATION MessageType = 1
-	MessageType_SIGNING        MessageType = 2
-	MessageType_FINISHED       MessageType = 3
+	FrostMessageType_NEW_ROUND      FrostMessageType = 0
+	FrostMessageType_KEY_GENERATION FrostMessageType = 1
+	FrostMessageType_SIGNING        FrostMessageType = 2
+	FrostMessageType_FINISHED       FrostMessageType = 3
 )
 
-// Enum value maps for MessageType.
+// Enum value maps for FrostMessageType.
 var (
-	MessageType_name = map[int32]string{
+	FrostMessageType_name = map[int32]string{
 		0: "NEW_ROUND",
 		1: "KEY_GENERATION",
 		2: "SIGNING",
 		3: "FINISHED",
 	}
-	MessageType_value = map[string]int32{
+	FrostMessageType_value = map[string]int32{
 		"NEW_ROUND":      0,
 		"KEY_GENERATION": 1,
 		"SIGNING":        2,
@@ -47,35 +47,35 @@ var (
 	}
 )
 
-func (x MessageType) Enum() *MessageType {
-	p := new(MessageType)
+func (x FrostMessageType) Enum() *FrostMessageType {
+	p := new(FrostMessageType)
 	*p = x
 	return p
 }
 
-func (x MessageType) String() string {
+func (x FrostMessageType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (MessageType) Descriptor() protoreflect.EnumDescriptor {
+func (FrostMessageType) Descriptor() protoreflect.EnumDescriptor {
 	return file_message_proto_enumTypes[0].Descriptor()
 }
 
-func (MessageType) Type() protoreflect.EnumType {
+func (FrostMessageType) Type() protoreflect.EnumType {
 	return &file_message_proto_enumTypes[0]
 }
 
-func (x MessageType) Number() protoreflect.EnumNumber {
+func (x FrostMessageType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use MessageType.Descriptor instead.
-func (MessageType) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use FrostMessageType.Descriptor instead.
+func (FrostMessageType) EnumDescriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{0}
 }
 
 // Message defines the base message structure
-type Message struct {
+type FrostMessage struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -83,11 +83,12 @@ type Message struct {
 	// from defines who is the message sender
 	From []byte `protobuf:"bytes,1,opt,name=from,proto3" json:"from,omitempty"`
 	// type defines the message type
-	Type MessageType `protobuf:"varint,2,opt,name=type,proto3,enum=MessageType" json:"type,omitempty"`
+	Type FrostMessageType `protobuf:"varint,2,opt,name=type,proto3,enum=FrostMessageType" json:"type,omitempty"`
+	Data []byte           `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
-func (x *Message) Reset() {
-	*x = Message{}
+func (x *FrostMessage) Reset() {
+	*x = FrostMessage{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_message_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -95,13 +96,13 @@ func (x *Message) Reset() {
 	}
 }
 
-func (x *Message) String() string {
+func (x *FrostMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Message) ProtoMessage() {}
+func (*FrostMessage) ProtoMessage() {}
 
-func (x *Message) ProtoReflect() protoreflect.Message {
+func (x *FrostMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_message_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -113,40 +114,49 @@ func (x *Message) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Message.ProtoReflect.Descriptor instead.
-func (*Message) Descriptor() ([]byte, []int) {
+// Deprecated: Use FrostMessage.ProtoReflect.Descriptor instead.
+func (*FrostMessage) Descriptor() ([]byte, []int) {
 	return file_message_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Message) GetFrom() []byte {
+func (x *FrostMessage) GetFrom() []byte {
 	if x != nil {
 		return x.From
 	}
 	return nil
 }
 
-func (x *Message) GetType() MessageType {
+func (x *FrostMessage) GetType() FrostMessageType {
 	if x != nil {
 		return x.Type
 	}
-	return MessageType_NEW_ROUND
+	return FrostMessageType_NEW_ROUND
+}
+
+func (x *FrostMessage) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
 }
 
 var File_message_proto protoreflect.FileDescriptor
 
 var file_message_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22,
-	0x3f, 0x0a, 0x07, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x72,
-	0x6f, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x66, 0x72, 0x6f, 0x6d, 0x12, 0x20,
-	0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x0c, 0x2e, 0x4d,
-	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65,
-	0x2a, 0x4b, 0x0a, 0x0b, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79, 0x70, 0x65, 0x12,
-	0x0d, 0x0a, 0x09, 0x4e, 0x45, 0x57, 0x5f, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x10, 0x00, 0x12, 0x12,
-	0x0a, 0x0e, 0x4b, 0x45, 0x59, 0x5f, 0x47, 0x45, 0x4e, 0x45, 0x52, 0x41, 0x54, 0x49, 0x4f, 0x4e,
-	0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x53, 0x49, 0x47, 0x4e, 0x49, 0x4e, 0x47, 0x10, 0x02, 0x12,
-	0x0c, 0x0a, 0x08, 0x46, 0x49, 0x4e, 0x49, 0x53, 0x48, 0x45, 0x44, 0x10, 0x03, 0x42, 0x11, 0x5a,
-	0x0f, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x5d, 0x0a, 0x0c, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12,
+	0x12, 0x0a, 0x04, 0x66, 0x72, 0x6f, 0x6d, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x66,
+	0x72, 0x6f, 0x6d, 0x12, 0x25, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0e, 0x32, 0x11, 0x2e, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
+	0x54, 0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61,
+	0x74, 0x61, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x2a, 0x50,
+	0x0a, 0x10, 0x46, 0x72, 0x6f, 0x73, 0x74, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x79,
+	0x70, 0x65, 0x12, 0x0d, 0x0a, 0x09, 0x4e, 0x45, 0x57, 0x5f, 0x52, 0x4f, 0x55, 0x4e, 0x44, 0x10,
+	0x00, 0x12, 0x12, 0x0a, 0x0e, 0x4b, 0x45, 0x59, 0x5f, 0x47, 0x45, 0x4e, 0x45, 0x52, 0x41, 0x54,
+	0x49, 0x4f, 0x4e, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x53, 0x49, 0x47, 0x4e, 0x49, 0x4e, 0x47,
+	0x10, 0x02, 0x12, 0x0c, 0x0a, 0x08, 0x46, 0x49, 0x4e, 0x49, 0x53, 0x48, 0x45, 0x44, 0x10, 0x03,
+	0x42, 0x11, 0x5a, 0x0f, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x2f, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -164,11 +174,11 @@ func file_message_proto_rawDescGZIP() []byte {
 var file_message_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_message_proto_goTypes = []interface{}{
-	(MessageType)(0), // 0: MessageType
-	(*Message)(nil),  // 1: Message
+	(FrostMessageType)(0), // 0: FrostMessageType
+	(*FrostMessage)(nil),  // 1: FrostMessage
 }
 var file_message_proto_depIdxs = []int32{
-	0, // 0: Message.type:type_name -> MessageType
+	0, // 0: FrostMessage.type:type_name -> FrostMessageType
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -183,7 +193,7 @@ func file_message_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_message_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Message); i {
+			switch v := v.(*FrostMessage); i {
 			case 0:
 				return &v.state
 			case 1:

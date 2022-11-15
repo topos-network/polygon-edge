@@ -10,7 +10,7 @@ import (
 
 type transport interface {
 	Multicast(msg *proto.Message) error
-	MulticastFrost(msg *protoFrost.Message) error
+	MulticastFrost(msg *protoFrost.FrostMessage) error
 }
 
 type gossipTransport struct {
@@ -22,7 +22,7 @@ func (g *gossipTransport) Multicast(msg *proto.Message) error {
 	return g.topic.Publish(msg)
 }
 
-func (g *gossipTransport) MulticastFrost(msg *protoFrost.Message) error {
+func (g *gossipTransport) MulticastFrost(msg *protoFrost.FrostMessage) error {
 	return g.topicFrost.Publish(msg)
 }
 
@@ -32,7 +32,7 @@ func (i *backendIBFT) Multicast(msg *proto.Message) {
 	}
 }
 
-func (i *backendIBFT) MulticastFrost(msg *protoFrost.Message) {
+func (i *backendIBFT) MulticastFrost(msg *protoFrost.FrostMessage) {
 	if err := i.transport.MulticastFrost(msg); err != nil {
 		i.logger.Error("fail to gossip frost message ", "err", err)
 	}
@@ -47,7 +47,7 @@ func (i *backendIBFT) setupTransport() error {
 	}
 
 	// Define a new topic for frost
-	topicFrost, err := i.network.NewTopic(frostProto, &protoFrost.Message{})
+	topicFrost, err := i.network.NewTopic(frostProto, &protoFrost.FrostMessage{})
 	if err != nil {
 		return err
 	}
@@ -73,6 +73,32 @@ func (i *backendIBFT) setupTransport() error {
 				"type", msg.Type.String(),
 				"height", msg.GetView().Height,
 				"round", msg.GetView().Round,
+				"addr", types.BytesToAddress(msg.From).String(),
+			)
+		},
+	); err != nil {
+		return err
+	}
+
+	// Subscribe to the frost Topic
+	if err := topicFrost.Subscribe(
+		func(obj interface{}, _ peer.ID) {
+			if !i.isActiveValidator() {
+				return
+			}
+
+			msg, ok := obj.(*protoFrost.FrostMessage)
+			if !ok {
+				i.logger.Error("invalid type assertion for message request")
+
+				return
+			}
+
+			i.frost.ProcessMessage(msg)
+
+			i.logger.Debug(
+				"frost message received",
+				"type", msg.Type.String(),
 				"addr", types.BytesToAddress(msg.From).String(),
 			)
 		},

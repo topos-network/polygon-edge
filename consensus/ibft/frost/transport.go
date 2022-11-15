@@ -8,5 +8,5 @@ import (
 // the node uses to communicate with other peers
 type Transport interface {
 	// Multicast multicasts the message to other peers
-	MulticastFrost(message *proto.Message)
+	MulticastFrost(message *proto.FrostMessage)
 }
