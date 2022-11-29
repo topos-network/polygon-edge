@@ -4,7 +4,6 @@ import (
 	"github.com/0xPolygon/polygon-edge/network/common"
 	peerEvent "github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/0xPolygon/polygon-edge/network/frost"
-	"github.com/0xPolygon/polygon-edge/network/identity"
 	"github.com/armon/go-metrics"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -18,7 +17,7 @@ func (s *Server) NewFrostClient(peerID peer.ID) (network.Stream, error) {
 		return nil, err
 	}
 
-	// Identity protocol connections are temporary and not saved anywhere
+	// Frost protocol connections are temporary and not saved anywhere
 	return stream, nil
 }
 
@@ -83,10 +82,10 @@ func (s *Server) UpdateFrostPendingConnCount(delta int64, direction network.Dire
 	s.updateFrostPendingConnCountMetrics(direction)
 }
 
-// setupFrost sets up the identity service for the node
+// setupFrost sets up the frost service for the node
 func (s *Server) setupFrost() error {
 	// Create an instance of the identity service
-	identityService := identity.NewIdentityService(
+	frostService := frost.NewFrostService(
 		s,
 		s.logger,
 		int64(s.config.Chain.Params.ChainID),
@@ -94,10 +93,10 @@ func (s *Server) setupFrost() error {
 	)
 
 	// Register the identity service protocol
-	s.registerIdentityService(identityService)
+	s.registerFrostService(frostService)
 
 	// Register the network notify bundle handlers
-	s.host.Network().Notify(identityService.GetNotifyBundle())
+	s.host.Network().Notify(frostService.GetNotifyBundle())
 
 	return nil
 }

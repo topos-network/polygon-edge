@@ -64,8 +64,9 @@ type Server struct {
 	host  host.Host             // the libp2p host reference
 	addrs []multiaddr.Multiaddr // the list of supported (bound) addresses
 
-	peers     map[peer.ID]*PeerConnInfo // map of all peer connections
-	peersLock sync.Mutex                // lock for the peer map
+	peers                  map[peer.ID]*PeerConnInfo // map of all peer connections
+	peersLock              sync.Mutex                // lock for the peer map
+	pendingPeerConnections sync.Map                  // Map that keeps track of the pending status of peers; peerID -> bool
 
 	dialQueue *dial.DialQueue // queue used to asynchronously connect to peers
 
@@ -86,14 +87,16 @@ type Server struct {
 
 	bootnodes *bootnodesWrapper // reference of all bootnodes for the node
 
-	frostPeers            map[peer.ID]*FrostPeerConnInfo // map of all topos node connections
-	frostPeersLock        sync.Mutex                     // lock for the peer map of topos nodes
-	frostConnectionCounts *ConnectionInfo
+	frostPeers                  map[peer.ID]*FrostPeerConnInfo // map of all topos node connections
+	frostPeersLock              sync.Mutex                     // lock for the peer map of topos nodes
+	frostPendingPeerConnections sync.Map                       // Map that keeps track of the pending status of peers; peerID -> bool
+	frostConnectionCounts       *ConnectionInfo
 }
 
 // NewServer returns a new instance of the networking server
 func NewServer(logger hclog.Logger, config *Config) (*Server, error) {
 	logger = logger.Named("network")
+	logger.SetLevel(hclog.Debug)
 
 	key, err := setupLibp2pKey(config.SecretsManager)
 	if err != nil {
@@ -156,6 +159,10 @@ func NewServer(logger hclog.Logger, config *Config) (*Server, error) {
 			config.MaxOutboundPeers,
 		),
 		frostPeers: make(map[peer.ID]*FrostPeerConnInfo),
+		frostConnectionCounts: NewBlankConnectionInfo(
+			config.MaxInboundPeers,
+			config.MaxOutboundPeers,
+		),
 	}
 
 	// start gossip protocol
@@ -176,6 +183,11 @@ func NewServer(logger hclog.Logger, config *Config) (*Server, error) {
 // HasFreeConnectionSlot checks if there are free connection slots in the specified direction [Thread safe]
 func (s *Server) HasFreeConnectionSlot(direction network.Direction) bool {
 	return s.connectionCounts.HasFreeConnectionSlot(direction)
+}
+
+// HasFreeConnectionSlot checks if there are free connection slots in the specified direction [Thread safe]
+func (s *Server) HasFreeFrostConnectionSlot(direction network.Direction) bool {
+	return s.frostConnectionCounts.HasFreeConnectionSlot(direction)
 }
 
 // PeerConnInfo holds the connection information about the peer
@@ -878,5 +890,50 @@ func (s *Server) updateFrostPendingConnCountMetrics(direction network.Direction)
 	case network.DirOutbound:
 		metrics.SetGauge([]string{"pending_outbound_frost_connections_count"},
 			float32(s.frostConnectionCounts.GetPendingOutboundConnCount()))
+	}
+}
+
+// GetProtocols fetches the list of node-supported protocols
+func (s *Server) HasPendingStatus(peerID peer.ID) bool {
+	_, pendingPeerConection := s.pendingPeerConnections.Load(peerID)
+	_, pendingFrostPeerConection := s.frostPendingPeerConnections.Load(peerID)
+	return pendingPeerConection || pendingFrostPeerConection
+}
+
+func (s *Server) AddPendingPeer(peerID peer.ID, direction network.Direction) {
+	s.logger.Debug("Add pending peer", "id", peerID)
+	if _, loaded := s.pendingPeerConnections.LoadOrStore(peerID, direction); !loaded {
+		s.UpdatePendingConnCount(1, direction)
+	}
+}
+
+func (s *Server) RemovePendingPeer(peerID peer.ID) {
+	s.logger.Debug("Remove pending peer", "id", peerID)
+	if value, loaded := s.pendingPeerConnections.LoadAndDelete(peerID); loaded {
+		direction, ok := value.(network.Direction)
+		if !ok {
+			return
+		}
+
+		s.UpdatePendingConnCount(-1, direction)
+	}
+}
+
+func (s *Server) AddFrostPendingPeer(peerID peer.ID, direction network.Direction) {
+	s.logger.Debug("Add frost pending peer", "id", peerID)
+	if _, loaded := s.frostPendingPeerConnections.LoadOrStore(peerID, direction); !loaded {
+		s.UpdateFrostPendingConnCount(1, direction)
+	}
+}
+
+func (s *Server) RemoveFrostPendingPeer(peerID peer.ID) {
+	s.logger.Debug("Remove frost pending peer", "id", peerID)
+	if value, loaded := s.frostPendingPeerConnections.LoadAndDelete(peerID); loaded {
+		direction, ok := value.(network.Direction)
+		if !ok {
+			return
+		}
+
+		s.UpdateFrostPendingConnCount(-1, direction)
 	}
 }

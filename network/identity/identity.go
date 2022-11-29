@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/hashicorp/go-hclog"
@@ -52,6 +51,12 @@ type networkingServer interface {
 
 	// HasFreeConnectionSlot checks if there are available outbound connection slots [Thread safe]
 	HasFreeConnectionSlot(direction network.Direction) bool
+
+	AddPendingPeer(peerID peer.ID, direction network.Direction)
+
+	RemovePendingPeer(peerID peer.ID)
+
+	HasPendingStatus(peerID peer.ID) bool
 }
 
 // IdentityService is a networking service used to handle peer handshaking.
@@ -59,9 +64,8 @@ type networkingServer interface {
 type IdentityService struct {
 	proto.UnimplementedIdentityServer
 
-	pendingPeerConnections sync.Map         // Map that keeps track of the pending status of peers; peerID -> bool
-	logger                 hclog.Logger     // The IdentityService logger
-	baseServer             networkingServer // The interface towards the base networking server
+	logger     hclog.Logger     // The IdentityService logger
+	baseServer networkingServer // The interface towards the base networking server
 
 	chainID int64   // The chain ID of the network
 	hostID  peer.ID // The base networking server's host peer ID
@@ -88,32 +92,34 @@ func (i *IdentityService) GetNotifyBundle() *network.NotifyBundle {
 			peerID := conn.RemotePeer()
 			i.logger.Debug("Conn", "peer", peerID, "direction", conn.Stat().Direction)
 
-			if i.hasPendingStatus(peerID) {
+			if i.baseServer.HasPendingStatus(peerID) {
 				// handshake has already started
 				return
 			}
 
-			if !i.baseServer.HasFreeConnectionSlot(conn.Stat().Direction) {
+			if !i.baseServer.HasFreeConnectionSlot(conn.Stat().Direction) && !i.baseServer.HasPendingStatus(peerID) {
 				i.disconnectFromPeer(peerID, ErrNoAvailableSlots.Error())
-
 				return
 			}
 
 			// Mark the peer as pending (pending handshake)
-			i.addPendingStatus(peerID, conn.Stat().Direction)
+			i.baseServer.AddPendingPeer(peerID, conn.Stat().Direction)
 
 			go func() {
 				eventType := event.PeerDialCompleted
 
 				if err := i.handleConnected(peerID, conn.Stat().Direction); err != nil {
+					i.baseServer.RemovePendingPeer(peerID)
 					// Close the connection to the peer
-					i.disconnectFromPeer(peerID, err.Error())
+					if !i.baseServer.HasPendingStatus(peerID) {
+						i.disconnectFromPeer(peerID, err.Error())
+					}
 
 					eventType = event.PeerFailedToConnect
+				} else {
+					// Mark the peer as no longer pending
+					i.baseServer.RemovePendingPeer(peerID)
 				}
-
-				// Mark the peer as no longer pending
-				i.removePendingStatus(peerID)
 
 				// Emit an adequate event
 				i.baseServer.EmitEvent(&event.PeerEvent{
@@ -126,32 +132,32 @@ func (i *IdentityService) GetNotifyBundle() *network.NotifyBundle {
 }
 
 // hasPendingStatus checks if a peer is pending handshake [Thread safe]
-func (i *IdentityService) hasPendingStatus(id peer.ID) bool {
-	_, ok := i.pendingPeerConnections.Load(id)
+// func (i *IdentityService) hasPendingStatus(id peer.ID) bool {
+// 	_, ok := i.pendingPeerConnections.Load(id)
 
-	return ok
-}
+// 	return ok
+// }
 
 // removePendingStatus removes the pending status from a peer,
 // and updates adequate counter information [Thread safe]
-func (i *IdentityService) removePendingStatus(peerID peer.ID) {
-	if value, loaded := i.pendingPeerConnections.LoadAndDelete(peerID); loaded {
-		direction, ok := value.(network.Direction)
-		if !ok {
-			return
-		}
+// func (i *IdentityService) removePendingStatus(peerID peer.ID) {
+// 	if value, loaded := i.pendingPeerConnections.LoadAndDelete(peerID); loaded {
+// 		direction, ok := value.(network.Direction)
+// 		if !ok {
+// 			return
+// 		}
 
-		i.baseServer.UpdatePendingConnCount(-1, direction)
-	}
-}
+// 		i.baseServer.UpdatePendingConnCount(-1, direction)
+// 	}
+// }
 
 // addPendingStatus adds the pending status to a peer,
 // and updates adequate counter information [Thread safe]
-func (i *IdentityService) addPendingStatus(id peer.ID, direction network.Direction) {
-	if _, loaded := i.pendingPeerConnections.LoadOrStore(id, direction); !loaded {
-		i.baseServer.UpdatePendingConnCount(1, direction)
-	}
-}
+// func (i *IdentityService) addPendingStatus(id peer.ID, direction network.Direction) {
+// 	if _, loaded := i.pendingPeerConnections.LoadOrStore(id, direction); !loaded {
+// 		i.baseServer.UpdatePendingConnCount(1, direction)
+// 	}
+// }
 
 // disconnectFromPeer disconnects from the specified peer
 func (i *IdentityService) disconnectFromPeer(peerID peer.ID, reason string) {
