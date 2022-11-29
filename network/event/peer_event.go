@@ -5,19 +5,23 @@ import "github.com/libp2p/go-libp2p/core/peer"
 type PeerEventType uint
 
 const (
-	PeerConnected        PeerEventType = iota // Emitted when a peer connected
-	PeerFailedToConnect                       // Emitted when a peer failed to connect
-	PeerDisconnected                          // Emitted when a peer disconnected from node
-	PeerDialCompleted                         // Emitted when a peer completed dial
-	PeerAddedToDialQueue                      // Emitted when a peer is added to dial queue
+	PeerConnected         PeerEventType = iota // Emitted when a peer connected
+	PeerFailedToConnect                        // Emitted when a peer failed to connect
+	PeerDisconnected                           // Emitted when a peer disconnected from node
+	PeerDialCompleted                          // Emitted when a peer completed dial
+	PeerAddedToDialQueue                       // Emitted when a peer is added to dial queue
+	FrostPeerConnected                         // Emitted when a topos node frost peer is connected
+	FrostPeerDisconnected                      // Emitted when a topos node frost peer is disconnected from node
 )
 
 var peerEventToName = map[PeerEventType]string{
-	PeerConnected:        "PeerConnected",
-	PeerFailedToConnect:  "PeerFailedToConnect",
-	PeerDisconnected:     "PeerDisconnected",
-	PeerDialCompleted:    "PeerDialCompleted",
-	PeerAddedToDialQueue: "PeerAddedToDialQueue",
+	PeerConnected:         "PeerConnected",
+	PeerFailedToConnect:   "PeerFailedToConnect",
+	PeerDisconnected:      "PeerDisconnected",
+	PeerDialCompleted:     "PeerDialCompleted",
+	PeerAddedToDialQueue:  "PeerAddedToDialQueue",
+	FrostPeerConnected:    "FrostPeerConnected",
+	FrostPeerDisconnected: "FrostPeerDisconnected",
 }
 
 type PeerEvent struct {

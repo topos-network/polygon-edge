@@ -85,6 +85,10 @@ type Server struct {
 	temporaryDials sync.Map // map of temporary connections; peerID -> bool
 
 	bootnodes *bootnodesWrapper // reference of all bootnodes for the node
+
+	frostPeers            map[peer.ID]*FrostPeerConnInfo // map of all topos node connections
+	frostPeersLock        sync.Mutex                     // lock for the peer map of topos nodes
+	frostConnectionCounts *ConnectionInfo
 }
 
 // NewServer returns a new instance of the networking server
@@ -151,6 +155,7 @@ func NewServer(logger hclog.Logger, config *Config) (*Server, error) {
 			config.MaxInboundPeers,
 			config.MaxOutboundPeers,
 		),
+		frostPeers: make(map[peer.ID]*FrostPeerConnInfo),
 	}
 
 	// start gossip protocol
@@ -202,6 +207,13 @@ func (pci *PeerConnInfo) removeProtocolStream(protocol string) error {
 	return nil
 }
 
+// FrostPeerConnInfo holds the connection information about the topos node peer
+type FrostPeerConnInfo struct {
+	Info           peer.AddrInfo
+	connDirections map[network.Direction]bool
+	//TODO: ADD ADDITIONAL INFO HERE
+}
+
 // getProtocolStream fetches the protocol stream, if any
 func (pci *PeerConnInfo) getProtocolStream(protocol string) *rawGrpc.ClientConn {
 	return pci.protocolStreams[protocol]
@@ -245,6 +257,10 @@ func (s *Server) Start() error {
 		return fmt.Errorf("unable to setup identity, %w", setupErr)
 	}
 
+	if setupErr := s.setupFrost(); setupErr != nil {
+		return fmt.Errorf("unable to setup frost, %w", setupErr)
+	}
+
 	// Set up the peer discovery mechanism if needed
 	if !s.config.NoDiscover {
 		// Parse the bootnode data
@@ -266,6 +282,7 @@ func (s *Server) Start() error {
 		DisconnectedF: func(net network.Network, conn network.Conn) {
 			// Update the local connection metrics
 			s.removePeer(conn.RemotePeer())
+			s.removeFrostPeer(conn.RemotePeer())
 		},
 	})
 
@@ -485,6 +502,24 @@ func (s *Server) removePeer(peerID peer.ID) {
 	s.emitEvent(peerID, peerEvent.PeerDisconnected)
 }
 
+// removeFrostPeer removes a peer from the networking server's peer list,
+// and updates relevant counters and metrics. It is called from the
+// disconnection callback of the libp2p network bundle (when the connection is closed)
+func (s *Server) removeFrostPeer(peerID peer.ID) {
+	s.logger.Info("Frost peer disconnected", "id", peerID.String())
+
+	// Remove the peer from the peers map
+	frostConnectionInfo := s.removeFrostPeerInfo(peerID)
+	if frostConnectionInfo == nil {
+		// The peer wasn't present in the local peers info table
+		// so no action should be taken further
+		return
+	}
+
+	// Emit the event alerting listeners
+	s.emitEvent(peerID, peerEvent.FrostPeerDisconnected)
+}
+
 // removePeerInfo removes (pops) peer connection info from the networking
 // server's peer map. Returns nil if no peer was removed
 func (s *Server) removePeerInfo(peerID peer.ID) *PeerConnInfo {
@@ -517,6 +552,39 @@ func (s *Server) removePeerInfo(peerID peer.ID) *PeerConnInfo {
 	metrics.SetGauge([]string{"peers"}, float32(len(s.peers)))
 
 	return connectionInfo
+}
+
+// removeFrostPeerInfo removes (pops) peer connection info from the networking
+// server's peer map. Returns nil if no peer was removed
+func (s *Server) removeFrostPeerInfo(peerID peer.ID) *FrostPeerConnInfo {
+	s.frostPeersLock.Lock()
+	defer s.frostPeersLock.Unlock()
+
+	// Remove the frost peer from the peers map
+	frostConnectionInfo, ok := s.frostPeers[peerID]
+	if !ok {
+		// Peer is not present in the peers map
+		s.logger.Warn(
+			fmt.Sprintf("Attempted removing missing frost peer info %s", peerID),
+		)
+
+		return nil
+	}
+
+	// Delete the peer from the peers map
+	delete(s.frostPeers, peerID)
+
+	// Update connection counters
+	for frostConnDirection, active := range frostConnectionInfo.connDirections {
+		if active {
+			s.frostConnectionCounts.UpdateConnCountByDirection(-1, frostConnDirection)
+			s.updateFrostConnCountMetrics(frostConnDirection)
+		}
+	}
+
+	metrics.SetGauge([]string{"frost_peers"}, float32(len(s.peers)))
+
+	return frostConnectionInfo
 }
 
 // updateBootnodeConnCount attempts to update the bootnode connection count
@@ -786,5 +854,29 @@ func (s *Server) updatePendingConnCountMetrics(direction network.Direction) {
 	case network.DirOutbound:
 		metrics.SetGauge([]string{"pending_outbound_connections_count"},
 			float32(s.connectionCounts.GetPendingOutboundConnCount()))
+	}
+}
+
+// updateConnCountMetrics updates the connection count metrics
+func (s *Server) updateFrostConnCountMetrics(direction network.Direction) {
+	switch direction {
+	case network.DirInbound:
+		metrics.SetGauge([]string{"inbound_frost_connections_count"}, float32(s.frostConnectionCounts.GetInboundConnCount()))
+
+	case network.DirOutbound:
+		metrics.SetGauge([]string{"outbound_frost_connections_count"}, float32(s.frostConnectionCounts.GetOutboundConnCount()))
+	}
+}
+
+// updateFrostPendingConnCountMetrics updates the pending connection count metrics
+func (s *Server) updateFrostPendingConnCountMetrics(direction network.Direction) {
+	switch direction {
+	case network.DirInbound:
+		metrics.SetGauge([]string{"pending_inbound_frost_connections_count"},
+			float32(s.frostConnectionCounts.GetPendingInboundConnCount()))
+
+	case network.DirOutbound:
+		metrics.SetGauge([]string{"pending_outbound_frost_connections_count"},
+			float32(s.frostConnectionCounts.GetPendingOutboundConnCount()))
 	}
 }

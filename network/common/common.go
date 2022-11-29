@@ -20,6 +20,7 @@ const (
 const (
 	DiscProto     = "/disc/0.1"
 	IdentityProto = "/id/0.1"
+	Frost         = "/frost/0.1"
 )
 
 // DNSRegex is a regex string to match against a valid dns/dns4/dns6 addr
