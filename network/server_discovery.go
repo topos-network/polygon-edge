@@ -116,6 +116,32 @@ func (s *Server) SaveProtocolStream(
 	connectionInfo.addProtocolStream(protocol, stream)
 }
 
+// SaveProtocolStream saves the protocol stream to the peer
+// protocol stream reference [Thread safe]
+func (s *Server) SavRawProtocolStream(
+	protocol string,
+	stream *rawGrpc.ClientConn,
+	peerID peer.ID,
+) {
+	s.peersLock.Lock()
+	defer s.peersLock.Unlock()
+
+	connectionInfo, ok := s.peers[peerID]
+	if !ok {
+		s.logger.Warn(
+			fmt.Sprintf(
+				"Attempted to save protocol %s stream for non-existing peer %s",
+				protocol,
+				peerID,
+			),
+		)
+
+		return
+	}
+
+	connectionInfo.addProtocolStream(protocol, stream)
+}
+
 // CloseProtocolStream closes a protocol stream to the specified peer
 func (s *Server) CloseProtocolStream(protocol string, peerID peer.ID) error {
 	s.peersLock.Lock()

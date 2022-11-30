@@ -1,6 +1,8 @@
 package network
 
 import (
+	"fmt"
+
 	"github.com/0xPolygon/polygon-edge/network/common"
 	peerEvent "github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/0xPolygon/polygon-edge/network/frost"
@@ -11,14 +13,43 @@ import (
 
 // NewFrostClient returns a new frost stream client connection
 func (s *Server) NewFrostClient(peerID peer.ID) (network.Stream, error) {
+
 	// Create a new stream connection and return it
 	stream, err := s.NewStream(common.Frost, peerID)
 	if err != nil {
 		return nil, err
 	}
 
+	s.SaveRawProtocolStream(common.DiscProto, &stream, peerID)
+
 	// Frost protocol connections are temporary and not saved anywhere
 	return stream, nil
+}
+
+// SaveProtocolStream saves the protocol stream to the peer
+// protocol stream reference [Thread safe]
+func (s *Server) SaveRawProtocolStream(
+	protocol string,
+	stream *network.Stream,
+	peerID peer.ID,
+) {
+	s.frostPeersLock.Lock()
+	defer s.frostPeersLock.Unlock()
+
+	frostConnectionInfo, ok := s.frostPeers[peerID]
+	if !ok {
+		s.logger.Warn(
+			fmt.Sprintf(
+				"Attempted to save protocol %s stream for non-existing peer %s",
+				protocol,
+				peerID,
+			),
+		)
+
+		return
+	}
+
+	frostConnectionInfo.addFrostProtocolStream(protocol, stream)
 }
 
 // AddFrostPeer adds a new topos node peer to the networking server's peer list,
@@ -55,8 +86,9 @@ func (s *Server) addFrostPeerInfo(id peer.ID, direction network.Direction) bool 
 	if !frostConnectionExists {
 		// Create a new record for the connection info
 		frostConnectionInfo = &FrostPeerConnInfo{
-			Info:           s.host.Peerstore().PeerInfo(id),
-			connDirections: make(map[network.Direction]bool),
+			Info:            s.host.Peerstore().PeerInfo(id),
+			connDirections:  make(map[network.Direction]bool),
+			protocolStreams: make(map[string]*network.Stream),
 		}
 	}
 
@@ -102,6 +134,7 @@ func (s *Server) setupFrost() error {
 }
 
 // registerFrostService registers the identity service
-func (s *Server) registerFrostService(identityService *frost.FrostService) {
-	//s.RegisterProtocol(common.IdentityProto, grpcStream)
+func (s *Server) registerFrostService(frostService *frost.FrostService) {
+	frostStream := frost.NewFrostStream()
+	s.RegisterRawProtocol(common.Frost, frostStream)
 }

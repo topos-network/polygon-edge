@@ -57,6 +57,8 @@ type networkingServer interface {
 	RemovePendingPeer(peerID peer.ID)
 
 	HasPendingStatus(peerID peer.ID) bool
+
+	HasIdentityPendingStatus(peerID peer.ID) bool
 }
 
 // IdentityService is a networking service used to handle peer handshaking.
@@ -92,7 +94,7 @@ func (i *IdentityService) GetNotifyBundle() *network.NotifyBundle {
 			peerID := conn.RemotePeer()
 			i.logger.Debug("Conn", "peer", peerID, "direction", conn.Stat().Direction)
 
-			if i.baseServer.HasPendingStatus(peerID) {
+			if i.baseServer.HasIdentityPendingStatus(peerID) {
 				// handshake has already started
 				return
 			}

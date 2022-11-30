@@ -72,8 +72,9 @@ type Server struct {
 
 	discovery *discovery.DiscoveryService // service used for discovering other peers
 
-	protocols     map[string]Protocol // supported protocols
-	protocolsLock sync.Mutex          // lock for the supported protocols map
+	protocols     map[string]Protocol    // supported protocols
+	rawProtocols  map[string]RawProtocol // supported raw protocols
+	protocolsLock sync.Mutex             // lock for the supported protocols map
 
 	secretsManager secrets.SecretsManager // secrets manager for networking keys
 
@@ -148,6 +149,7 @@ func NewServer(logger hclog.Logger, config *Config) (*Server, error) {
 		closeCh:          make(chan struct{}),
 		emitterPeerEvent: emitter,
 		protocols:        map[string]Protocol{},
+		rawProtocols:     map[string]RawProtocol{},
 		secretsManager:   config.SecretsManager,
 		bootnodes: &bootnodesWrapper{
 			bootnodeArr:       make([]*peer.AddrInfo, 0),
@@ -219,15 +221,25 @@ func (pci *PeerConnInfo) removeProtocolStream(protocol string) error {
 	return nil
 }
 
+// getProtocolStream fetches the protocol stream, if any
+func (pci *PeerConnInfo) getProtocolStream(protocol string) *rawGrpc.ClientConn {
+	return pci.protocolStreams[protocol]
+}
+
 // FrostPeerConnInfo holds the connection information about the topos node peer
 type FrostPeerConnInfo struct {
-	Info           peer.AddrInfo
-	connDirections map[network.Direction]bool
-	//TODO: ADD ADDITIONAL INFO HERE
+	Info            peer.AddrInfo
+	connDirections  map[network.Direction]bool
+	protocolStreams map[string]*network.Stream
+}
+
+// addProtocolStream adds a protocol stream
+func (pci *FrostPeerConnInfo) addFrostProtocolStream(protocol string, stream *network.Stream) {
+	pci.protocolStreams[protocol] = stream
 }
 
 // getProtocolStream fetches the protocol stream, if any
-func (pci *PeerConnInfo) getProtocolStream(protocol string) *rawGrpc.ClientConn {
+func (pci *FrostPeerConnInfo) getFrostProtocolStream(protocol string) *network.Stream {
 	return pci.protocolStreams[protocol]
 }
 
@@ -701,11 +713,24 @@ type Protocol interface {
 	Handler() func(network.Stream)
 }
 
+type RawProtocol interface {
+	Client(network.Stream) *network.Stream
+	Handler() func(network.Stream)
+}
+
 func (s *Server) RegisterProtocol(id string, p Protocol) {
 	s.protocolsLock.Lock()
 	defer s.protocolsLock.Unlock()
 
 	s.protocols[id] = p
+	s.wrapStream(id, p.Handler())
+}
+
+func (s *Server) RegisterRawProtocol(id string, p RawProtocol) {
+	s.protocolsLock.Lock()
+	defer s.protocolsLock.Unlock()
+
+	s.rawProtocols[id] = p
 	s.wrapStream(id, p.Handler())
 }
 
@@ -898,6 +923,16 @@ func (s *Server) HasPendingStatus(peerID peer.ID) bool {
 	_, pendingPeerConection := s.pendingPeerConnections.Load(peerID)
 	_, pendingFrostPeerConection := s.frostPendingPeerConnections.Load(peerID)
 	return pendingPeerConection || pendingFrostPeerConection
+}
+
+func (s *Server) HasIdentityPendingStatus(peerID peer.ID) bool {
+	_, pendingPeerConection := s.pendingPeerConnections.Load(peerID)
+	return pendingPeerConection
+}
+
+func (s *Server) HasFrostPendingStatus(peerID peer.ID) bool {
+	_, pendingFrostPeerConection := s.frostPendingPeerConnections.Load(peerID)
+	return pendingFrostPeerConection
 }
 
 func (s *Server) AddPendingPeer(peerID peer.ID, direction network.Direction) {

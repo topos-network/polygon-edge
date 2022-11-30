@@ -7,7 +7,6 @@ import (
 	"github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/0xPolygon/polygon-edge/network/proto"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -24,7 +23,7 @@ var (
 type networkingServer interface {
 
 	// NewIdentityClient returns strem connection
-	NewIdentityClient(peerID peer.ID) (proto.IdentityClient, error)
+	NewFrostClient(peerID peer.ID) (network.Stream, error)
 
 	// DisconnectFromPeer attempts to disconnect from the specified peer
 	DisconnectFromPeer(peerID peer.ID, reason string)
@@ -46,6 +45,8 @@ type networkingServer interface {
 	RemoveFrostPendingPeer(peerID peer.ID)
 
 	HasPendingStatus(peerID peer.ID) bool
+
+	HasFrostPendingStatus(peerID peer.ID) bool
 }
 
 // FrostService is a networking service used to handle peer handshaking.
@@ -79,7 +80,7 @@ func (f *FrostService) GetNotifyBundle() *network.NotifyBundle {
 			peerID := conn.RemotePeer()
 			f.logger.Debug("Checking connection for FROST:", "peer", peerID, "direction", conn.Stat().Direction)
 
-			if f.baseServer.HasPendingStatus(peerID) {
+			if f.baseServer.HasFrostPendingStatus(peerID) {
 				// handshake has already started
 				return
 			}
@@ -148,17 +149,17 @@ func (f *FrostService) GetNotifyBundle() *network.NotifyBundle {
 // }
 
 // disconnectFromPeer disconnects from the specified peer
-func (i *FrostService) disconnectFromPeer(peerID peer.ID, reason string) {
-	i.baseServer.DisconnectFromPeer(peerID, reason)
+func (f *FrostService) disconnectFromPeer(peerID peer.ID, reason string) {
+	f.baseServer.DisconnectFromPeer(peerID, reason)
 }
 
 // handleConnected handles new network connections (handshakes)
-func (i *FrostService) handleConnected(peerID peer.ID, direction network.Direction) error {
+func (f *FrostService) handleConnected(peerID peer.ID, direction network.Direction) error {
 	fmt.Println(">>>>>>>>>>>>> FROST handle connected peer id: ", peerID)
-	_, clientErr := i.baseServer.NewIdentityClient(peerID)
+	_, clientErr := f.baseServer.NewFrostClient(peerID)
 	if clientErr != nil {
 		return fmt.Errorf(
-			"unable to create new identity client connection, %w",
+			"unable to create new frost client connection, %w",
 			clientErr,
 		)
 	}
@@ -171,7 +172,7 @@ func (i *FrostService) handleConnected(peerID peer.ID, direction network.Directi
 	// }
 
 	// If this is a NOT temporary connection, save it
-	i.baseServer.AddFrostPeer(peerID, direction)
+	f.baseServer.AddFrostPeer(peerID, direction)
 
 	return nil
 }
