@@ -33,16 +33,20 @@ func (s *FrostStream) Client(stream network.Stream) *network.Stream {
 }
 
 func (s *FrostStream) Handler() func(network.Stream) {
+	fmt.Println(">>>>>>>>>>>>>>>  FROST Handler called:")
+
 	return func(stream network.Stream) {
+		go func() {
+			for {
+				b := <-s.streamCh
+				fmt.Println(">>>>>>>>>>>>>>> FROST RECEIVED BYTES >> :", b)
+			}
+		}()
+
 		select {
 		case <-s.ctx.Done():
 			return
 		case s.streamCh <- stream:
-			fmt.Println(">>>>>>>>>>>>>>> RECEIVED BYTES:")
-			//b := make([]byte, len(p))
-			b := <-s.streamCh
-			fmt.Println(">>>>>>>>>>>>>>> RECEIVED BYTES >> :", b)
-
 		}
 	}
 }
@@ -59,11 +63,11 @@ func (s *FrostStream) Accept() (net.Conn, error) {
 }
 
 // Addr implements the net.Listener interface
-func (g *FrostStream) Addr() net.Addr {
+func (s *FrostStream) Addr() net.Addr {
 	return fakeLocalAddr()
 }
 
-func (g *FrostStream) Close() error {
+func (s *FrostStream) Close() error {
 	return nil
 }
 

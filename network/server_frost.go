@@ -13,7 +13,6 @@ import (
 
 // NewFrostClient returns a new frost stream client connection
 func (s *Server) NewFrostClient(peerID peer.ID) (network.Stream, error) {
-
 	// Create a new stream connection and return it
 	stream, err := s.NewStream(common.Frost, peerID)
 	if err != nil {

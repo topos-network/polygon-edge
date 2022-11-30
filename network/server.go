@@ -90,7 +90,7 @@ type Server struct {
 
 	frostPeers                  map[peer.ID]*FrostPeerConnInfo // map of all topos node connections
 	frostPeersLock              sync.Mutex                     // lock for the peer map of topos nodes
-	frostPendingPeerConnections sync.Map                       // Map that keeps track of the pending status of peers; peerID -> bool
+	frostPendingPeerConnections sync.Map                       // Map that keeps track of the frost pending status
 	frostConnectionCounts       *ConnectionInfo
 }
 
@@ -626,11 +626,23 @@ func (s *Server) updateBootnodeConnCount(peerID peer.ID, delta int64) {
 
 // DisconnectFromPeer disconnects the networking server from the specified peer
 func (s *Server) DisconnectFromPeer(peer peer.ID, reason string) {
-	if s.host.Network().Connectedness(peer) == network.Connected {
+	_, frostPeerConection := s.frostPeers[peer]
+	if (s.host.Network().Connectedness(peer) == network.Connected) && (!frostPeerConection) {
 		s.logger.Info(fmt.Sprintf("Closing connection to peer [%s] for reason [%s]", peer.String(), reason))
 
 		if closeErr := s.host.Network().ClosePeer(peer); closeErr != nil {
 			s.logger.Error(fmt.Sprintf("Unable to gracefully close peer connection, %v", closeErr))
+		}
+	}
+}
+
+func (s *Server) DisconnectFromFrostPeer(peer peer.ID, reason string) {
+	_, peerConection := s.peers[peer]
+	if (s.host.Network().Connectedness(peer) == network.Connected) && (!peerConection) {
+		s.logger.Info(fmt.Sprintf("Closing frost connection to peer [%s] for reason [%s]", peer.String(), reason))
+
+		if closeErr := s.host.Network().ClosePeer(peer); closeErr != nil {
+			s.logger.Error(fmt.Sprintf("Unable to gracefully close frost peer connection, %v", closeErr))
 		}
 	}
 }
@@ -898,10 +910,12 @@ func (s *Server) updatePendingConnCountMetrics(direction network.Direction) {
 func (s *Server) updateFrostConnCountMetrics(direction network.Direction) {
 	switch direction {
 	case network.DirInbound:
-		metrics.SetGauge([]string{"inbound_frost_connections_count"}, float32(s.frostConnectionCounts.GetInboundConnCount()))
+		metrics.SetGauge([]string{"inbound_frost_connections_count"},
+			float32(s.frostConnectionCounts.GetInboundConnCount()))
 
 	case network.DirOutbound:
-		metrics.SetGauge([]string{"outbound_frost_connections_count"}, float32(s.frostConnectionCounts.GetOutboundConnCount()))
+		metrics.SetGauge([]string{"outbound_frost_connections_count"},
+			float32(s.frostConnectionCounts.GetOutboundConnCount()))
 	}
 }
 
@@ -922,28 +936,30 @@ func (s *Server) updateFrostPendingConnCountMetrics(direction network.Direction)
 func (s *Server) HasPendingStatus(peerID peer.ID) bool {
 	_, pendingPeerConection := s.pendingPeerConnections.Load(peerID)
 	_, pendingFrostPeerConection := s.frostPendingPeerConnections.Load(peerID)
+
 	return pendingPeerConection || pendingFrostPeerConection
 }
 
 func (s *Server) HasIdentityPendingStatus(peerID peer.ID) bool {
 	_, pendingPeerConection := s.pendingPeerConnections.Load(peerID)
+
 	return pendingPeerConection
 }
 
 func (s *Server) HasFrostPendingStatus(peerID peer.ID) bool {
 	_, pendingFrostPeerConection := s.frostPendingPeerConnections.Load(peerID)
+
 	return pendingFrostPeerConection
 }
 
 func (s *Server) AddPendingPeer(peerID peer.ID, direction network.Direction) {
-	s.logger.Debug("Add pending peer", "id", peerID)
 	if _, loaded := s.pendingPeerConnections.LoadOrStore(peerID, direction); !loaded {
 		s.UpdatePendingConnCount(1, direction)
+		s.logger.Debug("Add pending peer", "id", peerID)
 	}
 }
 
 func (s *Server) RemovePendingPeer(peerID peer.ID) {
-	s.logger.Debug("Remove pending peer", "id", peerID)
 	if value, loaded := s.pendingPeerConnections.LoadAndDelete(peerID); loaded {
 		direction, ok := value.(network.Direction)
 		if !ok {
@@ -951,18 +967,18 @@ func (s *Server) RemovePendingPeer(peerID peer.ID) {
 		}
 
 		s.UpdatePendingConnCount(-1, direction)
+		s.logger.Debug("Remove pending peer", "id", peerID)
 	}
 }
 
 func (s *Server) AddFrostPendingPeer(peerID peer.ID, direction network.Direction) {
-	s.logger.Debug("Add frost pending peer", "id", peerID)
 	if _, loaded := s.frostPendingPeerConnections.LoadOrStore(peerID, direction); !loaded {
 		s.UpdateFrostPendingConnCount(1, direction)
+		s.logger.Debug("Added frost pending peer", "id", peerID)
 	}
 }
 
 func (s *Server) RemoveFrostPendingPeer(peerID peer.ID) {
-	s.logger.Debug("Remove frost pending peer", "id", peerID)
 	if value, loaded := s.frostPendingPeerConnections.LoadAndDelete(peerID); loaded {
 		direction, ok := value.(network.Direction)
 		if !ok {
@@ -970,5 +986,6 @@ func (s *Server) RemoveFrostPendingPeer(peerID peer.ID) {
 		}
 
 		s.UpdateFrostPendingConnCount(-1, direction)
+		s.logger.Debug("Removed frost pending peer", "id", peerID)
 	}
 }

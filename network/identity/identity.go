@@ -133,34 +133,6 @@ func (i *IdentityService) GetNotifyBundle() *network.NotifyBundle {
 	}
 }
 
-// hasPendingStatus checks if a peer is pending handshake [Thread safe]
-// func (i *IdentityService) hasPendingStatus(id peer.ID) bool {
-// 	_, ok := i.pendingPeerConnections.Load(id)
-
-// 	return ok
-// }
-
-// removePendingStatus removes the pending status from a peer,
-// and updates adequate counter information [Thread safe]
-// func (i *IdentityService) removePendingStatus(peerID peer.ID) {
-// 	if value, loaded := i.pendingPeerConnections.LoadAndDelete(peerID); loaded {
-// 		direction, ok := value.(network.Direction)
-// 		if !ok {
-// 			return
-// 		}
-
-// 		i.baseServer.UpdatePendingConnCount(-1, direction)
-// 	}
-// }
-
-// addPendingStatus adds the pending status to a peer,
-// and updates adequate counter information [Thread safe]
-// func (i *IdentityService) addPendingStatus(id peer.ID, direction network.Direction) {
-// 	if _, loaded := i.pendingPeerConnections.LoadOrStore(id, direction); !loaded {
-// 		i.baseServer.UpdatePendingConnCount(1, direction)
-// 	}
-// }
-
 // disconnectFromPeer disconnects from the specified peer
 func (i *IdentityService) disconnectFromPeer(peerID peer.ID, reason string) {
 	i.baseServer.DisconnectFromPeer(peerID, reason)

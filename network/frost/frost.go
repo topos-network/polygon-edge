@@ -3,6 +3,7 @@ package frost
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/hashicorp/go-hclog"
@@ -26,7 +27,7 @@ type networkingServer interface {
 	NewFrostClient(peerID peer.ID) (network.Stream, error)
 
 	// DisconnectFromPeer attempts to disconnect from the specified peer
-	DisconnectFromPeer(peerID peer.ID, reason string)
+	DisconnectFromFrostPeer(peerID peer.ID, reason string)
 
 	// AddPeer adds a peer to the networking server's peer store
 	AddFrostPeer(id peer.ID, direction network.Direction)
@@ -150,13 +151,12 @@ func (f *FrostService) GetNotifyBundle() *network.NotifyBundle {
 
 // disconnectFromPeer disconnects from the specified peer
 func (f *FrostService) disconnectFromPeer(peerID peer.ID, reason string) {
-	f.baseServer.DisconnectFromPeer(peerID, reason)
+	f.baseServer.DisconnectFromFrostPeer(peerID, reason)
 }
 
 // handleConnected handles new network connections (handshakes)
 func (f *FrostService) handleConnected(peerID peer.ID, direction network.Direction) error {
-	fmt.Println(">>>>>>>>>>>>> FROST handle connected peer id: ", peerID)
-	_, clientErr := f.baseServer.NewFrostClient(peerID)
+	stream, clientErr := f.baseServer.NewFrostClient(peerID)
 	if clientErr != nil {
 		return fmt.Errorf(
 			"unable to create new frost client connection, %w",
@@ -165,6 +165,12 @@ func (f *FrostService) handleConnected(peerID peer.ID, direction network.Directi
 	}
 
 	fmt.Println(">>>>>>>>>>>>> FROST Here we should communicate and check frost info of the peer: ", peerID)
+	stream.Write([]byte("HelloToposNode o yee"))
+	time.Sleep(time.Second * 5)
+
+	rd := []byte{}
+	num, _ := stream.Read(rd)
+	fmt.Println(">>>>>>>>>>>>> FROST Read response: ", rd, " number of bytes:", num)
 
 	// Validate that the peers are working on the same chain
 	// if status.Chain != resp.Chain {
@@ -172,6 +178,7 @@ func (f *FrostService) handleConnected(peerID peer.ID, direction network.Directi
 	// }
 
 	// If this is a NOT temporary connection, save it
+
 	f.baseServer.AddFrostPeer(peerID, direction)
 
 	return nil
