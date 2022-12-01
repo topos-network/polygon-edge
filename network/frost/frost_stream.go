@@ -33,7 +33,6 @@ func (s *FrostStream) Client(stream network.Stream) *network.Stream {
 }
 
 func (s *FrostStream) Handler() func(network.Stream) {
-	fmt.Println(">>>>>>>>>>>>>>>  FROST Handler called:")
 
 	return func(stream network.Stream) {
 		go func() {

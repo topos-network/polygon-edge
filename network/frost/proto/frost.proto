@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package v1;
+
+option go_package = "/frost/proto";
+
+// Block contains a block data
+message FrostMessage {
+  string message = 1;
+  string number = 2;
+}
+

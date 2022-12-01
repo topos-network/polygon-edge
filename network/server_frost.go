@@ -6,6 +6,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/network/common"
 	peerEvent "github.com/0xPolygon/polygon-edge/network/event"
 	"github.com/0xPolygon/polygon-edge/network/frost"
+	"github.com/0xPolygon/polygon-edge/network/frost/proto"
 	"github.com/armon/go-metrics"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -136,4 +137,22 @@ func (s *Server) setupFrost() error {
 func (s *Server) registerFrostService(frostService *frost.FrostService) {
 	frostStream := frost.NewFrostStream()
 	s.RegisterRawProtocol(common.Frost, frostStream)
+}
+
+// handleFrostStatusUpdate is a handler of gossip
+func (s *Server) handleFrostStatusUpdate(obj interface{}, from peer.ID) {
+	frostMessage, ok := obj.(*proto.FrostMessage)
+	fmt.Println(">>>>>>>>>>>>>>>>>> Received frost message:", frostMessage)
+	if !ok {
+		s.logger.Error("failed to cast gossiped frost message")
+		return
+	}
+
+	// if !s.host.Network().IsConnected(from) {
+	// 	if m.id != from.String() {
+	// 		m.logger.Debug("received status from non-connected peer, ignore", "id", from)
+	// 	}
+
+	// 	return
+	// }
 }

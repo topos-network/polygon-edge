@@ -10,6 +10,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/network/common"
 	"github.com/0xPolygon/polygon-edge/network/dial"
 	"github.com/0xPolygon/polygon-edge/network/discovery"
+	"github.com/0xPolygon/polygon-edge/network/frost/proto"
 	"github.com/armon/go-metrics"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
@@ -92,6 +93,7 @@ type Server struct {
 	frostPeersLock              sync.Mutex                     // lock for the peer map of topos nodes
 	frostPendingPeerConnections sync.Map                       // Map that keeps track of the frost pending status
 	frostConnectionCounts       *ConnectionInfo
+	frostTopic                  *Topic
 }
 
 // NewServer returns a new instance of the networking server
@@ -284,6 +286,17 @@ func (s *Server) Start() error {
 	if setupErr := s.setupFrost(); setupErr != nil {
 		return fmt.Errorf("unable to setup frost, %w", setupErr)
 	}
+
+	topic, err := s.NewTopic("/frost", &proto.FrostMessage{})
+	if err != nil {
+		return err
+	}
+
+	if err := topic.Subscribe(s.handleFrostStatusUpdate); err != nil {
+		return fmt.Errorf("unable to subscribe to gossip topic, %w", err)
+	}
+
+	s.frostTopic = topic
 
 	// Set up the peer discovery mechanism if needed
 	if !s.config.NoDiscover {
