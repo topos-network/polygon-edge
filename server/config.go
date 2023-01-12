@@ -42,6 +42,7 @@ type Config struct {
 
 	LogFilePath string
 
+	ToposSequencerAddr string // Address of topos serquencer service
 	Relayer bool
 
 	NumBlockConfirmations uint64

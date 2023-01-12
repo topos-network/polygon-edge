@@ -31,6 +31,7 @@ type Config struct {
 	JSONRPCBatchRequestLimit uint64     `json:"json_rpc_batch_request_limit" yaml:"json_rpc_batch_request_limit"`
 	JSONRPCBlockRangeLimit   uint64     `json:"json_rpc_block_range_limit" yaml:"json_rpc_block_range_limit"`
 	JSONLogFormat            bool       `json:"json_log_format" yaml:"json_log_format"`
+	ToposSequencerAddr       string     `json:"topos_sequencer_addr" yaml:"topos_sequencer_addr"`
 
 	Relayer               bool   `json:"relayer" yaml:"relayer"`
 	NumBlockConfirmations uint64 `json:"num_block_confirmations" yaml:"num_block_confirmations"`
@@ -118,6 +119,7 @@ func DefaultConfig() *Config {
 		LogFilePath:              "",
 		JSONRPCBatchRequestLimit: DefaultJSONRPCBatchRequestLimit,
 		JSONRPCBlockRangeLimit:   DefaultJSONRPCBlockRangeLimit,
+		ToposSequencerAddr:       "",
 		Relayer:                  false,
 		NumBlockConfirmations:    DefaultNumBlockConfirmations,
 	}

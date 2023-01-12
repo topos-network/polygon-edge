@@ -73,6 +73,7 @@ type Params struct {
 	Logger         hclog.Logger
 	SecretsManager secrets.SecretsManager
 	BlockTime      uint64
+	ToposSequencerAddr string
 
 	NumBlockConfirmations uint64
 }

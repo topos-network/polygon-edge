@@ -32,7 +32,7 @@ require (
 	github.com/umbracle/fastrlp v0.0.0-20220527094140-59d5dd30e722
 	github.com/umbracle/go-eth-bn256 v0.0.0-20230125114011-47cb310d9b0b
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
-	google.golang.org/grpc v1.50.1
+	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 )
@@ -210,6 +210,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
+	github.com/topos-network/go-topos-sequencer-client v0.0.0-20230322084800-1e8efcf8a2b6 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.37.0 // indirect
