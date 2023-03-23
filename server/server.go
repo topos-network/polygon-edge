@@ -586,6 +586,7 @@ func (s *Server) setupConsensus() error {
 			BlockTime:             uint64(blockTime.Seconds()),
 			NumBlockConfirmations: s.config.NumBlockConfirmations,
 			MetricsInterval:       s.config.MetricsInterval,
+			ToposSequencerAddr:    s.config.ToposSequencerAddr,
 		},
 	)
 

@@ -42,7 +42,8 @@ type Config struct {
 
 	LogFilePath string
 
-	Relayer bool
+	ToposSequencerAddr string // Address of topos serquencer service
+	Relayer            bool
 
 	NumBlockConfirmations      uint64
 	RelayerTrackerPollInterval time.Duration
