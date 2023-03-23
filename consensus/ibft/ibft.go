@@ -215,7 +215,8 @@ func (i *backendIBFT) Initialize() error {
 
 	// Initialize frost backend if topos sequencer address is set
 	if i.frostBackend.GetToposSequencerAddr() != "" {
-		if err := i.frostBackend.Initialize(i.frostBackend.GetToposSequencerAddr(), i.currentSigner.Address().String(), i); err != nil {
+		if err := i.frostBackend.Initialize(i.frostBackend.GetToposSequencerAddr(),
+			i.currentSigner.Address().String(), i); err != nil {
 			return err
 		}
 	}
