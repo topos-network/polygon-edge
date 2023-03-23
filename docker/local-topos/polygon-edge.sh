@@ -41,13 +41,14 @@ case "$1" in
                     BOOTNODE_ADDRESS=$(echo $secrets | jq -r '.[0] | .address')
 
                     echo "Generating IBFT Genesis file..."
-                    cd /data && /polygon-edge/polygon-edge genesis $CHAIN_CUSTOM_OPTIONS \
-                      --dir genesis.json \
+                    ls -la "$POLYGON_EDGE_BIN"
+                    "$POLYGON_EDGE_BIN" genesis $CHAIN_CUSTOM_OPTIONS \
+                      --dir "$GENESIS_PATH" \
                       --consensus ibft \
                       --ibft-validators-prefix-path data- \
                       --validator-set-size=$NUMBER_OF_NODES \
                       --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID \
-                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000 && cd ..
+                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000
                 fi    
             ;;
 
@@ -79,6 +80,7 @@ case "$1" in
 
         echo "Predeploying ConstAddressDeployer contract..."
         CONST_ADDRESS_DEPLOYER_ADDRESS=0x0000000000000000000000000000000000001110
+        ls -la "$POLYGON_EDGE_BIN"
         "$POLYGON_EDGE_BIN" genesis predeploy \
         --chain "$GENESIS_PATH" \
         --artifacts-path "$CONTRACTS_PATH"/ConstAddressDeployer.json \
