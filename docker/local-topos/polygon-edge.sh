@@ -4,7 +4,7 @@ set -e
 
 POLYGON_EDGE_BIN=./polygon-edge
 CONTRACTS_PATH=/contracts
-GENESIS_PATH=/data/genesis/genesis.json
+GENESIS_PATH=/data/genesis.json
 CHAIN_ID="${CHAIN_ID:-100}" # 100 is Edge's default value
 NUMBER_OF_NODES="${NUMBER_OF_NODES:-4}" # Number of subnet nodes in the consensus
 BOOTNODE_DOMAIN_NAME="${BOOTNODE_DOMAIN_NAME:-node-1}"
