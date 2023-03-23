@@ -23,9 +23,6 @@ jobs:
         with:
           go-version: 1.18.x
 
-      - name: Set Github PAT for private deps
-        run: git config --global url."https://${{ secrets.ROBOT_TOPOSWARE_PRIV_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"          
-
       - name: Run tests
         run: make test-e2e
         
