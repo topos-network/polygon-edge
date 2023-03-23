@@ -22,9 +22,9 @@ EOL
 case "$1" in
 
     "init")
-        data_dir="data-"
+        data_dir="/data/data-"
         if [ "$NUMBER_OF_NODES" -eq "1" ]; then
-            data_dir="data-1"
+            data_dir="/data/data-1"
         fi
 
         case "$2" in 
