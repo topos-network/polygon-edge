@@ -75,17 +75,15 @@ case "$1" in
                       --premine=$BOOTNODE_ADDRESS:1000000000000000000000
                 fi
             ;;
-
-            *)
-                echo "Predeploying ConstAddressDeployer contract..."
-                CONST_ADDRESS_DEPLOYER_ADDRESS=0x0000000000000000000000000000000000001110
-                "$POLYGON_EDGE_BIN" genesis predeploy \
-                --chain "$GENESIS_PATH" \
-                --artifacts-path "$CONTRACTS_PATH"/ConstAddressDeployer.json \
-                --predeploy-address "$CONST_ADDRESS_DEPLOYER_ADDRESS"
-                echo "ConstAddressDeployer has been successfully predeployed!"
-            ;;
         esac
+
+        echo "Predeploying ConstAddressDeployer contract..."
+        CONST_ADDRESS_DEPLOYER_ADDRESS=0x0000000000000000000000000000000000001110
+        "$POLYGON_EDGE_BIN" genesis predeploy \
+        --chain "$GENESIS_PATH" \
+        --artifacts-path "$CONTRACTS_PATH"/ConstAddressDeployer.json \
+        --predeploy-address "$CONST_ADDRESS_DEPLOYER_ADDRESS"
+        echo "ConstAddressDeployer has been successfully predeployed!"
     ;;
 
     *)
