@@ -95,7 +95,12 @@ func (i *backendIBFT) setupTransport() error {
 			}
 			i.logger.Info("Frost message gossiped to this node:", msg)
 
-			i.frostBackend.ProcessGossipedMessages(msg)
+			err := i.frostBackend.ProcessGossipedMessages(msg)
+			if err != nil {
+				i.logger.Error("Failed to process gossiped message:", err)
+
+				return
+			}
 
 			i.logger.Debug(
 				"frost message received from validator network",
