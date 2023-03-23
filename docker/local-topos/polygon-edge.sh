@@ -47,7 +47,7 @@ case "$1" in
                       --ibft-validators-prefix-path data- \
                       --validator-set-size=$NUMBER_OF_NODES \
                       --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID \
-                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000
+                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000 && cd ..
                 fi    
             ;;
 
@@ -67,7 +67,7 @@ case "$1" in
 
                     echo "Generating PolyBFT Genesis file..."
                     "$POLYGON_EDGE_BIN" genesis $CHAIN_CUSTOM_OPTIONS \
-                      --dir /data/genesis.json \
+                      --dir "$GENESIS_PATH" \
                       --consensus polybft \
                       --manifest /data/manifest.json \
                       --validator-set-size=$NUMBER_OF_NODES \
