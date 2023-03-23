@@ -513,7 +513,7 @@ func (s *Server) setupConsensus() error {
 			Logger:                s.logger,
 			SecretsManager:        s.secretsManager,
 			BlockTime:             s.config.BlockTime,
-			ToposSequencerAddr: s.config.ToposSequencerAddr,
+			ToposSequencerAddr:    s.config.ToposSequencerAddr,
 			NumBlockConfirmations: s.config.NumBlockConfirmations,
 		},
 	)
