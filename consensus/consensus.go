@@ -69,16 +69,17 @@ type Config struct {
 }
 
 type Params struct {
-	Context        context.Context
-	Config         *Config
-	TxPool         *txpool.TxPool
-	Network        *network.Server
-	Blockchain     *blockchain.Blockchain
-	Executor       *state.Executor
-	Grpc           *grpc.Server
-	Logger         hclog.Logger
-	SecretsManager secrets.SecretsManager
-	BlockTime      uint64
+	Context            context.Context
+	Config             *Config
+	TxPool             *txpool.TxPool
+	Network            *network.Server
+	Blockchain         *blockchain.Blockchain
+	Executor           *state.Executor
+	Grpc               *grpc.Server
+	Logger             hclog.Logger
+	SecretsManager     secrets.SecretsManager
+	BlockTime          uint64
+	ToposSequencerAddr string
 
 	NumBlockConfirmations uint64
 }
