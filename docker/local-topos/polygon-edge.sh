@@ -72,8 +72,7 @@ case "$1" in
                       --consensus polybft \
                       --manifest /data/manifest.json \
                       --validator-set-size=$NUMBER_OF_NODES \
-                      --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID \
-                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000
+                      --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID
                 fi
             ;;
         esac
