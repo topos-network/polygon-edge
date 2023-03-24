@@ -64,7 +64,7 @@ case "$1" in
                     BOOTNODE_ADDRESS=$(echo $secrets | jq -r '.[0] | .address')
 
                     echo "Generating manifest..."
-                    "$POLYGON_EDGE_BIN" manifest --path /data/manifest.json --validators-path /data --validators-prefix "$data_dir"
+                    "$POLYGON_EDGE_BIN" manifest --path /data/manifest.json --validators-path /data --validators-prefix data-
 
                     echo "Generating PolyBFT Genesis file..."
                     "$POLYGON_EDGE_BIN" genesis $CHAIN_CUSTOM_OPTIONS \
