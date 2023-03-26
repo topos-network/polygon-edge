@@ -42,13 +42,14 @@ case "$1" in
                     BOOTNODE_ADDRESS=$(echo $secrets | jq -r '.[0] | .address')
 
                     echo "Generating IBFT Genesis file..."
-                    "$POLYGON_EDGE_BIN" genesis $CHAIN_CUSTOM_OPTIONS \
-                      --dir "$GENESIS_PATH" \
+                    cd /data && /polygon-edge/polygon-edge genesis $CHAIN_CUSTOM_OPTIONS \
+                      --dir genesis.json \
                       --consensus ibft \
                       --ibft-validators-prefix-path data- \
                       --validator-set-size=$NUMBER_OF_NODES \
                       --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID \
-                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000
+                      --premine=$BOOTNODE_ADDRESS:1000000000000000000000 \
+                    && cd /polygon-edge
                 fi    
             ;;
 
