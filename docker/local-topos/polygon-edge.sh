@@ -36,6 +36,7 @@ case "$1" in
                     echo "Generating secrets..."
                     secrets=$("$POLYGON_EDGE_BIN" secrets init --insecure \
                     --num "$NUMBER_OF_NODES" --data-dir "$data_dir" --json)
+                    chmod -R 755 /data # TOPOS: To make secret readable from the sequencer
                     echo "Secrets have been successfully generated"
 
                     BOOTNODE_ID=$(echo $secrets | jq -r '.[0] | .node_id')
