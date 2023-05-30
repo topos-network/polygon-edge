@@ -10,8 +10,10 @@ import (
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/helper/common"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
+	"github.com/0xPolygon/polygon-edge/prover"
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
+	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -27,8 +29,10 @@ type ethTxPoolStore interface {
 }
 
 type Account struct {
-	Balance *big.Int
-	Nonce   uint64
+	Balance  *big.Int
+	Nonce    uint64
+	Root     types.Hash
+	CodeHash []byte
 }
 
 type ethStateStore interface {
@@ -67,11 +71,16 @@ type ethBlockchainStore interface {
 	GetSyncProgression() *progress.Progression
 }
 
+type ethTracing interface {
+	TraceBlock(block *types.Block, tracer tracer.Tracer) ([]interface{}, error)
+}
+
 // ethStore provides access to the methods needed by eth endpoint
 type ethStore interface {
 	ethTxPoolStore
 	ethStateStore
 	ethBlockchainStore
+	ethTracing
 }
 
 // Eth is the eth jsonrpc endpoint
@@ -708,4 +717,67 @@ func (e *Eth) UninstallFilter(id string) (bool, error) {
 // Unsubscribe uninstalls a filter in a websocket
 func (e *Eth) Unsubscribe(id string) (bool, error) {
 	return e.filterManager.Uninstall(id), nil
+}
+
+func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
+	header, err := GetHeaderFromBlockNumberOrHash(block, e.store)
+	if err != nil {
+		return nil, err
+	}
+
+	fullBlock, valid := e.store.GetBlockByHash(header.Hash, true)
+	if !valid {
+		return nil, fmt.Errorf("failed to get block by hash %s", header.Hash)
+	}
+
+	// Parse to/from accounts
+	accountsStr, err := prover.ParseBlockAccounts(fullBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	// Trace the block
+	tracer, _, err := NewTracer(&TraceConfig{
+		EnableMemory:     true,
+		EnableReturnData: true,
+		DisableStack:     false,
+		DisableStorage:   false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Run tracer on the current block
+	tracesJSON, err := e.store.TraceBlock(fullBlock, tracer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse contract accounts called from smart contract execution
+	contractAccounts, err := prover.ParseContractCodeForAccounts(tracesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	accountsStr = append(accountsStr, contractAccounts...)
+
+	accounts := make(map[string]*Account)
+
+	// Get all the data for the accounts
+	for _, accountStr := range accountsStr {
+		accountAddress := types.StringToAddress(accountStr)
+
+		// Get the full account nonce, balance, state root and code hash
+		acc, err := e.store.GetAccount(header.StateRoot, accountAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		accounts[accountStr] = acc
+	}
+
+	return &prover.ProverData{
+		BlockHeader: *header,
+		Accounts:    accounts,
+	}, nil
 }
