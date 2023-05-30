@@ -584,8 +584,10 @@ func (j *jsonRPCHub) GetAccount(root types.Hash, addr types.Address) (*jsonrpc.A
 	}
 
 	account := &jsonrpc.Account{
-		Nonce:   acct.Nonce,
-		Balance: new(big.Int).Set(acct.Balance),
+		Nonce:    acct.Nonce,
+		Balance:  new(big.Int).Set(acct.Balance),
+		Root:     acct.Root,
+		CodeHash: acct.CodeHash,
 	}
 
 	return account, nil
