@@ -614,6 +614,25 @@ func (j *jsonRPCHub) GetStorage(stateRoot types.Hash, addr types.Address, slot t
 	return res.Bytes(), nil
 }
 
+func (j *jsonRPCHub) GetContractStorageData(stateRoot types.Hash, addr types.Address) ([]byte, types.Hash, error) {
+	account, err := getAccountImpl(j.state, stateRoot, addr)
+	if err != nil {
+		return nil, types.Hash{}, err
+	}
+
+	snap, err := j.state.NewSnapshotAt(stateRoot)
+	if err != nil {
+		return nil, types.Hash{}, err
+	}
+
+	rlpRootHash, keccakRootHash, err := snap.GetContractStorageData(addr, account.Root)
+	if err != nil {
+		return nil, types.Hash{}, err
+	}
+
+	return rlpRootHash, keccakRootHash, nil
+}
+
 func (j *jsonRPCHub) GetCode(root types.Hash, addr types.Address) ([]byte, error) {
 	account, err := getAccountImpl(j.state, root, addr)
 	if err != nil {

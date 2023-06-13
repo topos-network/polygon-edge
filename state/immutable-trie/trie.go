@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	commonHelpers "github.com/0xPolygon/polygon-edge/helper/common"
+	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -106,6 +107,20 @@ func (t *Trie) Get(k []byte, storage Storage) ([]byte, bool) {
 	return res, res != nil
 }
 
+func (t *Trie) GetRootRlpData(storage Storage) ([]byte, types.Hash, bool) {
+	txn := t.Txn(storage)
+
+	// While calculating root keccak hash, rlp hash of the root node is also calculated
+	keccakHash, err := txn.Hash()
+	if err != nil {
+		return nil, types.Hash{}, false
+	}
+
+	rlpHash := txn.rootHashes[hex.EncodeToString(keccakHash[:])]
+
+	return rlpHash, types.BytesToHash(keccakHash), len(rlpHash) != 0
+}
+
 func hashit(k []byte) []byte {
 	h := sha3.NewLegacyKeccak256()
 	h.Write(k)
@@ -136,7 +151,8 @@ func (t *Trie) hashRoot() []byte {
 }
 
 func (t *Trie) Txn(storage Storage) *Txn {
-	return &Txn{root: t.root, epoch: t.epoch + 1, storage: storage}
+	return &Txn{root: t.root, epoch: t.epoch + 1, storage: storage,
+		rootHashes: make(map[string][]byte)}
 }
 
 type Putter interface {
@@ -148,6 +164,8 @@ type Txn struct {
 	epoch   uint32
 	storage Storage
 	batch   Putter
+	// Map of root keccak hash to its full rlp root hash
+	rootHashes map[string][]byte
 }
 
 func (t *Txn) Commit() *Trie {
@@ -213,6 +231,88 @@ func (t *Txn) lookup(node interface{}, key []byte) (Node, []byte) {
 		}
 
 		return nil, res
+
+	default:
+		panic(fmt.Sprintf("unknown node type %v", n)) //nolint:gocritic
+	}
+}
+
+func decodeRlp(value []byte) types.Hash {
+	p := &fastrlp.Parser{}
+
+	v, err := p.Parse(value)
+	if err != nil {
+		return types.Hash{}
+	}
+
+	res := []byte{}
+	if res, err = v.GetBytes(res[:0]); err != nil {
+		return types.Hash{}
+	}
+
+	return types.BytesToHash(res)
+}
+
+func (t *Txn) PrintTrie() {
+	t.printTrie(t.root, 0)
+
+	return
+}
+
+func (t *Txn) printTrie(node interface{}, level int) {
+	for i := 0; i <= level; i++ {
+		fmt.Print(" ")
+	}
+
+	switch n := node.(type) {
+	case nil:
+		return
+
+	case *ValueNode:
+		if n.hash {
+			nc, ok, err := GetNode(n.buf, t.storage)
+			if err != nil {
+				panic(err) //nolint:gocritic
+			}
+
+			if !ok {
+				return
+			}
+
+			t.printTrie(nc, level+1)
+
+			return
+		} else {
+			fmt.Println("ValueNode level", level, " value:", decodeRlp(n.buf), "\n")
+		}
+
+		return
+
+	case *ShortNode:
+		fmt.Println("ShortNode level", level, " common:", hex.EncodeToHex(n.common.hash),
+			" key:", hex.EncodeToHex(n.key), "\n")
+
+		t.printTrie(n.child, level+1)
+
+		return
+
+	case *FullNode:
+		fmt.Println("FullNode level", level, " number of children:", len(n.children),
+			" common:", hex.EncodeToHex(n.common.hash), " value:", n.value, "\n")
+
+		if n.value != nil {
+			t.printTrie(n.value, level+1)
+		}
+
+		for i, child := range n.children {
+			if child != nil {
+				fmt.Println("FullNode level", level, " entering child:", i, "\n")
+			}
+
+			t.printTrie(child, level+1)
+		}
+
+		return
 
 	default:
 		panic(fmt.Sprintf("unknown node type %v", n)) //nolint:gocritic
