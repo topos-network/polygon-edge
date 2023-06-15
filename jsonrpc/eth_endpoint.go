@@ -1,7 +1,6 @@
 package jsonrpc
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,7 +8,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/0xPolygon/polygon-edge/chain"
+	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/helper/common"
+	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
 	"github.com/0xPolygon/polygon-edge/prover"
 	"github.com/0xPolygon/polygon-edge/state"
@@ -97,8 +98,8 @@ type Eth struct {
 
 var (
 	ErrInsufficientFunds = errors.New("insufficient funds for execution")
-	EmptyCodeHash        = []byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125, 178, 220, 199, 3, 192, 229,
-		0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112}
+	EmptyCodeHash        = hex.EncodeToHex([]byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125,
+		178, 220, 199, 3, 192, 229, 0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112})
 )
 
 // ChainId returns the chain id of the client
@@ -725,6 +726,7 @@ func (e *Eth) Unsubscribe(id string) (bool, error) {
 }
 
 func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
+	// Get block metadata
 	header, err := GetHeaderFromBlockNumberOrHash(block, e.store)
 	if err != nil {
 		return nil, err
@@ -766,7 +768,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 
 	accountsStr = append(accountsStr, contractAccounts...)
 
-	accounts := make(map[string]*Account)
+	accounts := make(map[string]*prover.ProverAccount)
 
 	// Get all the data for the accounts
 	for _, accountStr := range accountsStr {
@@ -778,9 +780,15 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 			return nil, err
 		}
 
-		accounts[accountAddress.String()] = acc
+		accounts[accountAddress.String()] = &prover.ProverAccount{
+			Nonce:    acc.Nonce,
+			Balance:  acc.Balance,
+			Root:     acc.Root.String(),
+			CodeHash: hex.EncodeToHex(acc.CodeHash),
+		}
 	}
 
+	// Get storage data for all accounts from this block
 	storages := make([]prover.Storage, 0)
 
 	storageChanges, err := prover.ParseTraceForStorageChanges(tracesJSON)
@@ -789,9 +797,10 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 	}
 
 	for account, accountData := range accounts {
-		if !bytes.Equal(accountData.CodeHash, EmptyCodeHash) {
+		if accountData.CodeHash != EmptyCodeHash {
 			// Account has code
-			rlpRootData, storageHash, err := e.store.GetContractStorageData(header.StateRoot, types.StringToAddress(account))
+			rlpRootData, storageHash, err := e.store.GetContractStorageData(header.StateRoot,
+				types.StringToAddress(account))
 			if err != nil {
 				return nil, err
 			}
@@ -805,9 +814,36 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 		}
 	}
 
+	// All transactions in the block
+	transactions := fullBlock.Transactions
+
+	// Receipts from this block
+	receipts, err := e.store.GetReceiptsByHash(header.Hash)
+	if err != nil {
+		return nil, err
+	}
+
+	// Contract code map CodeHash -> ContractCode
+	contractCodes := make(map[string]string)
+
+	for account, accountData := range accounts {
+		if accountData.CodeHash != EmptyCodeHash {
+			contractCode, err := e.store.GetCode(header.StateRoot, types.StringToAddress(account))
+			if err != nil {
+				return nil, err
+			}
+
+			codeHash := crypto.Keccak256(contractCode)
+			contractCodes[hex.EncodeToHex(codeHash)] = hex.EncodeToHex(contractCode)
+		}
+	}
+
 	return &prover.ProverData{
-		BlockHeader: *header,
-		Accounts:    accounts,
-		Storage:     storages,
+		BlockHeader:   *header,
+		Accounts:      accounts,
+		Storage:       storages,
+		Transactions:  transactions,
+		Receipts:      receipts,
+		ContractCodes: contractCodes,
 	}, nil
 }
