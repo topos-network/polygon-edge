@@ -3,6 +3,7 @@ package prover
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/0xPolygon/polygon-edge/state/runtime/tracer/structtracer"
 	"github.com/0xPolygon/polygon-edge/types"
@@ -15,10 +16,20 @@ type Storage struct {
 	Storage     []structtracer.StorageUpdate
 }
 
+type ProverAccount struct {
+	Balance  *big.Int
+	Nonce    uint64
+	Root     string
+	CodeHash string
+}
+
 type ProverData struct {
-	BlockHeader types.Header
-	Accounts    interface{}
-	Storage     interface{}
+	BlockHeader   types.Header
+	Accounts      interface{}
+	Storage       interface{}
+	Transactions  interface{}
+	Receipts      interface{}
+	ContractCodes interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {
