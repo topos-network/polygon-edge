@@ -1,6 +1,7 @@
 package itrie
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"hash"
@@ -196,6 +197,10 @@ func (t *Txn) hash(node Node, h *hasher, a *fastrlp.Arena, d int) *fastrlp.Value
 	// Write data
 	if t.batch != nil {
 		t.batch.Put(tmp, h.buf)
+	}
+
+	if t.rootHashes != nil {
+		t.rootHashes[hex.EncodeToString(hh)] = h.buf
 	}
 
 	return a.NewCopyBytes(hh)

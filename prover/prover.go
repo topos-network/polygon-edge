@@ -1,3 +1,4 @@
+// Package prover contains structures and utility functions for the prover
 package prover
 
 import (
@@ -7,9 +8,17 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
+type Storage struct {
+	Account     string
+	Hash        types.Hash
+	RootRlpHash []byte
+	Storage     []structtracer.StorageUpdate
+}
+
 type ProverData struct {
 	BlockHeader types.Header
 	Accounts    interface{}
+	Storage     interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {
@@ -44,4 +53,21 @@ func ParseContractCodeForAccounts(tracesJSON []interface{}) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func ParseTraceForStorageChanges(tracesJSON []interface{}) (map[string][]structtracer.StorageUpdate, error) {
+	var storageChanges = make(map[string][]structtracer.StorageUpdate)
+
+	for _, traceJSON := range tracesJSON {
+		trace, ok := traceJSON.(*structtracer.StructTraceResult)
+		if !ok {
+			return nil, fmt.Errorf("invalid struct trace data conversion")
+		}
+
+		for account, storage := range trace.StorageUpdates {
+			storageChanges[account.String()] = append(storageChanges[account.String()], storage...)
+		}
+	}
+
+	return storageChanges, nil
 }

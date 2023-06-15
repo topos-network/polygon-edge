@@ -45,6 +45,10 @@ func (m *mockSnapshot) GetCode(hash types.Hash) ([]byte, bool) {
 	return nil, false
 }
 
+func (m *mockSnapshot) GetContractStorageData(addr types.Address, root types.Hash) ([]byte, types.Hash, error) {
+	return nil, types.Hash{}, nil
+}
+
 func newStateWithPreState(preState map[types.Address]*PreState) readSnapshot {
 	return &mockSnapshot{state: preState}
 }

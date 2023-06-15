@@ -43,6 +43,11 @@ func (l *StructLog) ErrorString() string {
 	return ""
 }
 
+type StorageUpdate struct {
+	Slot  types.Hash `json:"slot"`
+	Value types.Hash `json:"value"`
+}
+
 type StructTracer struct {
 	Config Config
 
@@ -56,9 +61,12 @@ type StructTracer struct {
 	output      []byte
 	err         error
 
-	storage       []map[types.Address]map[types.Hash]types.Hash
-	currentMemory []([]byte)
-	currentStack  []([]*big.Int)
+	contractAddress       types.Address
+	storage               []map[types.Address]map[types.Hash]types.Hash
+	currentMemory         []([]byte)
+	currentStack          []([]*big.Int)
+	storageUpdates        [][]StorageUpdate
+	accountStorageUpdates map[types.Address][]StorageUpdate
 }
 
 func NewStructTracer(config Config) *StructTracer {
@@ -66,11 +74,13 @@ func NewStructTracer(config Config) *StructTracer {
 	storage[0] = make(map[types.Address]map[types.Hash]types.Hash)
 
 	return &StructTracer{
-		Config:        config,
-		cancelLock:    sync.RWMutex{},
-		storage:       storage,
-		currentMemory: make([]([]byte), 1),
-		currentStack:  make([]([]*big.Int), 1),
+		Config:                config,
+		cancelLock:            sync.RWMutex{},
+		storage:               storage,
+		currentMemory:         make([]([]byte), 1),
+		currentStack:          make([]([]*big.Int), 1),
+		storageUpdates:        make([][]StorageUpdate, 1),
+		accountStorageUpdates: make(map[types.Address][]StorageUpdate),
 	}
 }
 
@@ -214,6 +224,7 @@ func (t *StructTracer) captureStorage(
 ) {
 	if opCode == evm.CALL || opCode == evm.STATICCALL {
 		t.storage = append(t.storage, make(map[types.Address]map[types.Hash]types.Hash))
+		t.storageUpdates = append(t.storageUpdates, make([]StorageUpdate, 0))
 	}
 
 	if !t.Config.EnableStorage || (opCode != evm.SLOAD && opCode != evm.SSTORE) {
@@ -251,6 +262,11 @@ func (t *StructTracer) captureStorage(
 		value := types.BytesToHash(stack[sp-2].Bytes())
 
 		(*storage)[contractAddress][slot] = value
+
+		t.storageUpdates[len(t.storageUpdates)-1] = append(t.storageUpdates[len(t.storageUpdates)-1], StorageUpdate{
+			Slot:  slot,
+			Value: value,
+		})
 	}
 }
 
@@ -302,7 +318,17 @@ func (t *StructTracer) ExecuteState(
 
 	if t.Config.EnableStorage {
 		if opCode == evm.OpCode(evm.CALL).String() || opCode == evm.OpCode(evm.STATICCALL).String() {
+			contract := types.BytesToAddress(stack[len(stack)-2].Bytes())
+
+			if t.accountStorageUpdates[contract] != nil {
+				t.accountStorageUpdates[contract] = append(t.accountStorageUpdates[contract],
+					t.storageUpdates[len(t.storageUpdates)-1]...)
+			} else {
+				t.accountStorageUpdates[contract] = t.storageUpdates[len(t.storageUpdates)-1]
+			}
+
 			t.storage = t.storage[:len(t.storage)-1]
+			t.storageUpdates = t.storageUpdates[:len(t.storageUpdates)-1]
 		}
 
 		contractStorage, ok := t.storage[len(t.storage)-1][contractAddress]
@@ -315,6 +341,8 @@ func (t *StructTracer) ExecuteState(
 			}
 		}
 	}
+
+	t.contractAddress = contractAddress
 
 	t.logs = append(
 		t.logs,
@@ -336,10 +364,12 @@ func (t *StructTracer) ExecuteState(
 }
 
 type StructTraceResult struct {
-	Failed      bool           `json:"failed"`
-	Gas         uint64         `json:"gas"`
-	ReturnValue string         `json:"returnValue"`
-	StructLogs  []StructLogRes `json:"structLogs"`
+	Account        string                            `json:"account"`
+	Failed         bool                              `json:"failed"`
+	StorageUpdates map[types.Address][]StorageUpdate `json:"storageUpdates"`
+	Gas            uint64                            `json:"gas"`
+	ReturnValue    string                            `json:"returnValue"`
+	StructLogs     []StructLogRes                    `json:"structLogs"`
 }
 
 type StructLogRes struct {
@@ -368,11 +398,16 @@ func (t *StructTracer) GetResult() (interface{}, error) {
 		returnValue = fmt.Sprintf("%x", t.output)
 	}
 
+	t.accountStorageUpdates[t.contractAddress] = t.storageUpdates[len(t.storageUpdates)-1]
+	storageUpdates := t.accountStorageUpdates
+
 	return &StructTraceResult{
-		Failed:      t.err != nil,
-		Gas:         t.consumedGas,
-		ReturnValue: returnValue,
-		StructLogs:  formatStructLogs(t.logs),
+		Account:        t.contractAddress.String(),
+		Failed:         t.err != nil,
+		Gas:            t.consumedGas,
+		ReturnValue:    returnValue,
+		StructLogs:     formatStructLogs(t.logs),
+		StorageUpdates: storageUpdates,
 	}, nil
 }
 
