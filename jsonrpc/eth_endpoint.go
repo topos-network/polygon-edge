@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -38,6 +39,8 @@ type Account struct {
 type ethStateStore interface {
 	GetAccount(root types.Hash, addr types.Address) (*Account, error)
 	GetStorage(root types.Hash, addr types.Address, slot types.Hash) ([]byte, error)
+	// Return contract storage root node hash encoded in RLP and keccak256 hash of it
+	GetContractStorageData(stateRoot types.Hash, addr types.Address) ([]byte, types.Hash, error)
 	GetForksInTime(blockNumber uint64) chain.ForksInTime
 	GetCode(root types.Hash, addr types.Address) ([]byte, error)
 }
@@ -94,6 +97,8 @@ type Eth struct {
 
 var (
 	ErrInsufficientFunds = errors.New("insufficient funds for execution")
+	EmptyCodeHash        = []byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125, 178, 220, 199, 3, 192, 229,
+		0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112}
 )
 
 // ChainId returns the chain id of the client
@@ -773,11 +778,36 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 			return nil, err
 		}
 
-		accounts[accountStr] = acc
+		accounts[accountAddress.String()] = acc
+	}
+
+	storages := make([]prover.Storage, 0)
+
+	storageChanges, err := prover.ParseTraceForStorageChanges(tracesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	for account, accountData := range accounts {
+		if !bytes.Equal(accountData.CodeHash, EmptyCodeHash) {
+			// Account has code
+			rlpRootData, storageHash, err := e.store.GetContractStorageData(header.StateRoot, types.StringToAddress(account))
+			if err != nil {
+				return nil, err
+			}
+
+			storages = append(storages, prover.Storage{
+				Account:     account,
+				Hash:        storageHash,
+				RootRlpHash: rlpRootData,
+				Storage:     storageChanges[account],
+			})
+		}
 	}
 
 	return &prover.ProverData{
 		BlockHeader: *header,
 		Accounts:    accounts,
+		Storage:     storages,
 	}, nil
 }

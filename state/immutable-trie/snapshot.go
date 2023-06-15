@@ -2,6 +2,7 @@ package itrie
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/state"
@@ -51,6 +52,29 @@ func (s *Snapshot) GetStorage(addr types.Address, root types.Hash, rawkey types.
 	}
 
 	return types.BytesToHash(res)
+}
+
+func (s *Snapshot) GetContractStorageData(addr types.Address, root types.Hash) ([]byte, types.Hash, error) {
+	var (
+		err  error
+		trie *Trie
+	)
+
+	if root == emptyStateHash {
+		trie = s.state.newTrie()
+	} else {
+		trie, err = s.state.newTrieAt(root)
+		if err != nil {
+			return nil, types.Hash{}, err
+		}
+	}
+
+	rlpRootHash, keccakRootHash, ok := trie.GetRootRlpData(s.state.storage)
+	if !ok {
+		return nil, types.Hash{}, errors.New("unable to get storage data")
+	}
+
+	return rlpRootHash, keccakRootHash, nil
 }
 
 func (s *Snapshot) GetAccount(addr types.Address) (*state.Account, error) {

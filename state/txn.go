@@ -16,6 +16,8 @@ var emptyStateHash = types.StringToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e
 
 type readSnapshot interface {
 	GetStorage(addr types.Address, root types.Hash, key types.Hash) types.Hash
+	// Return rlp root hash of the smart contract storage and keccak256 of that hash
+	GetContractStorageData(addr types.Address, root types.Hash) ([]byte, types.Hash, error)
 	GetAccount(addr types.Address) (*Account, error)
 	GetCode(hash types.Hash) ([]byte, bool)
 }
