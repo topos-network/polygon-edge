@@ -283,14 +283,14 @@ func (t *Txn) printTrie(node interface{}, level int) {
 
 			return
 		} else {
-			fmt.Println("ValueNode level", level, " value:", decodeRlp(n.buf), "\n")
+			fmt.Println("ValueNode level", level, " value:", decodeRlp(n.buf))
 		}
 
 		return
 
 	case *ShortNode:
 		fmt.Println("ShortNode level", level, " common:", hex.EncodeToHex(n.common.hash),
-			" key:", hex.EncodeToHex(n.key), "\n")
+			" key:", hex.EncodeToHex(n.key))
 
 		t.printTrie(n.child, level+1)
 
@@ -298,7 +298,7 @@ func (t *Txn) printTrie(node interface{}, level int) {
 
 	case *FullNode:
 		fmt.Println("FullNode level", level, " number of children:", len(n.children),
-			" common:", hex.EncodeToHex(n.common.hash), " value:", n.value, "\n")
+			" common:", hex.EncodeToHex(n.common.hash), " value:", n.value)
 
 		if n.value != nil {
 			t.printTrie(n.value, level+1)
@@ -306,7 +306,7 @@ func (t *Txn) printTrie(node interface{}, level int) {
 
 		for i, child := range n.children {
 			if child != nil {
-				fmt.Println("FullNode level", level, " entering child:", i, "\n")
+				fmt.Println("FullNode level", level, " entering child:", i)
 			}
 
 			t.printTrie(child, level+1)
