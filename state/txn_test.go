@@ -41,6 +41,10 @@ func (m *mockSnapshot) GetAccount(addr types.Address) (*Account, error) {
 	return acct, nil
 }
 
+func (m *mockSnapshot) GetAccountProof(addr types.Address) ([][]byte, error) {
+	return nil, nil
+}
+
 func (m *mockSnapshot) GetCode(hash types.Hash) ([]byte, bool) {
 	return nil, false
 }

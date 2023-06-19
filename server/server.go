@@ -413,6 +413,21 @@ func getAccountImpl(state state.State, root types.Hash, addr types.Address) (*st
 	return account, nil
 }
 
+// getAccountImpl is used for fetching account state from both TxPool and JSON-RPC
+func getAccountProofImpl(state state.State, root types.Hash, addr types.Address) ([][]byte, error) {
+	snap, err := state.NewSnapshotAt(root)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get snapshot for root '%s': %w", root, err)
+	}
+
+	proof, err := snap.GetAccountProof(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return proof, nil
+}
+
 func (t *txpoolHub) GetNonce(root types.Hash, addr types.Address) uint64 {
 	account, err := getAccountImpl(t.state, root, addr)
 
@@ -591,6 +606,15 @@ func (j *jsonRPCHub) GetAccount(root types.Hash, addr types.Address) (*jsonrpc.A
 	}
 
 	return account, nil
+}
+
+func (j *jsonRPCHub) GetAccountProof(root types.Hash, addr types.Address) ([][]byte, error) {
+	proof, err := getAccountProofImpl(j.state, root, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return proof, nil
 }
 
 // GetForksInTime returns the active forks at the given block height

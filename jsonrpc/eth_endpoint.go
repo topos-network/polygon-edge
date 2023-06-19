@@ -39,6 +39,7 @@ type Account struct {
 
 type ethStateStore interface {
 	GetAccount(root types.Hash, addr types.Address) (*Account, error)
+	GetAccountProof(root types.Hash, addr types.Address) ([][]byte, error)
 	GetStorage(root types.Hash, addr types.Address, slot types.Hash) ([]byte, error)
 	// Return contract storage root node hash encoded in RLP and keccak256 hash of it
 	GetContractStorageData(stateRoot types.Hash, addr types.Address) ([]byte, types.Hash, error)
@@ -838,6 +839,26 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 		}
 	}
 
+	state := make([]prover.ProverAccountProof, 0)
+
+	// Get state Merkle proofs for all accounts
+	for account := range accounts {
+		accountProof, err := e.store.GetAccountProof(header.StateRoot, types.StringToAddress(account))
+		if err != nil {
+			return nil, err
+		}
+
+		aa := make([]string, 0)
+		for _, proof := range accountProof {
+			aa = append(aa, hex.EncodeToHex(proof))
+		}
+
+		state = append(state, prover.ProverAccountProof{
+			Account:     account,
+			MerkleProof: aa,
+		})
+	}
+
 	return &prover.ProverData{
 		BlockHeader:   *header,
 		Accounts:      accounts,
@@ -845,5 +866,6 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 		Transactions:  transactions,
 		Receipts:      receipts,
 		ContractCodes: contractCodes,
+		State:         state,
 	}, nil
 }

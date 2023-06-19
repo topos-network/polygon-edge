@@ -19,6 +19,7 @@ type readSnapshot interface {
 	// Return rlp root hash of the smart contract storage and keccak256 of that hash
 	GetContractStorageData(addr types.Address, root types.Hash) ([]byte, types.Hash, error)
 	GetAccount(addr types.Address) (*Account, error)
+	GetAccountProof(addr types.Address) ([][]byte, error)
 	GetCode(hash types.Hash) ([]byte, bool)
 }
 

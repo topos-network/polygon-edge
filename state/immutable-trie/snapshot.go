@@ -93,6 +93,22 @@ func (s *Snapshot) GetAccount(addr types.Address) (*state.Account, error) {
 	return &account, nil
 }
 
+func (s *Snapshot) GetAccountProof(addr types.Address) ([][]byte, error) {
+	key := crypto.Keccak256(addr.Bytes())
+
+	proof, ok := s.trie.GetProof(key, s.state.storage)
+	if !ok {
+		return nil, nil
+	}
+
+	// Reverse merkle proof array, so that root is at the beginning
+	for i, j := 0, len(proof)-1; i < j; i, j = i+1, j-1 {
+		proof[i], proof[j] = proof[j], proof[i]
+	}
+
+	return proof, nil
+}
+
 func (s *Snapshot) GetCode(hash types.Hash) ([]byte, bool) {
 	return s.state.GetCode(hash)
 }

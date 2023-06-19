@@ -23,6 +23,11 @@ type ProverAccount struct {
 	CodeHash string
 }
 
+type ProverAccountProof struct {
+	Account     string
+	MerkleProof []string
+}
+
 type ProverData struct {
 	BlockHeader   types.Header
 	Accounts      interface{}
@@ -30,6 +35,7 @@ type ProverData struct {
 	Transactions  interface{}
 	Receipts      interface{}
 	ContractCodes interface{}
+	State         interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {

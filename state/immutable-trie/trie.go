@@ -2,6 +2,7 @@ package itrie
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/umbracle/fastrlp"
@@ -16,6 +17,8 @@ import (
 type Node interface {
 	Hash() ([]byte, bool)
 	SetHash(b []byte) []byte
+	Rlp() ([]byte, []byte, bool)
+	SetRlp(h []byte, r []byte) ([]byte, []byte)
 }
 
 // ValueNode is a leaf on the merkle-trie
@@ -35,8 +38,19 @@ func (v *ValueNode) SetHash(b []byte) []byte {
 	panic("We cannot set hash on value node") //nolint:gocritic
 }
 
+// Rlp implements the node interface
+func (v *ValueNode) Rlp() ([]byte, []byte, bool) {
+	return v.buf, v.buf, v.hash
+}
+
+// SetRlp implements the node interface
+func (v *ValueNode) SetRlp(h []byte, r []byte) ([]byte, []byte) {
+	panic("We cannot set rlp on value node") //nolint:gocritic
+}
+
 type common struct {
 	hash []byte
+	rlp  []byte
 }
 
 // Hash implements the node interface
@@ -50,6 +64,21 @@ func (c *common) SetHash(b []byte) []byte {
 	copy(c.hash, b)
 
 	return c.hash
+}
+
+// Rlp implements the node interface, return hash and plain rlp values
+func (c *common) Rlp() ([]byte, []byte, bool) {
+	return c.hash, c.rlp, len(c.hash) != 0 && len(c.rlp) != 0
+}
+
+// SetRlp implements the node interface
+func (c *common) SetRlp(h []byte, r []byte) ([]byte, []byte) {
+	c.hash = commonHelpers.ExtendByteSlice(c.hash, len(h))
+	c.rlp = commonHelpers.ExtendByteSlice(c.rlp, len(r))
+	copy(c.hash, h)
+	copy(c.rlp, r)
+
+	return c.hash, c.rlp
 }
 
 // ShortNode is an extension or short node
@@ -105,6 +134,14 @@ func (t *Trie) Get(k []byte, storage Storage) ([]byte, bool) {
 	res := txn.Lookup(k)
 
 	return res, res != nil
+}
+
+func (t *Trie) GetProof(k []byte, storage Storage) ([][]byte, bool) {
+	txn := t.Txn(storage)
+	path, err := txn.LookupWithProof(k)
+
+	// Return result, merkle proof and if result is found
+	return path, path != nil && err == nil
 }
 
 func (t *Trie) GetRootRlpData(storage Storage) ([]byte, types.Hash, bool) {
@@ -178,6 +215,32 @@ func (t *Txn) Lookup(key []byte) []byte {
 	return res
 }
 
+func (t *Txn) LookupWithProof(key []byte) ([][]byte, error) {
+	h, ok := hasherPool.Get().(*hasher)
+	if !ok {
+		return nil, errors.New("invalid type assertion")
+	}
+
+	arena, _ := h.AcquireArena()
+
+	path := make([]*fastrlp.Value, 0)
+	path = t.lookupMerklePath(t.root, bytesToHexNibbles(key), path, h, arena)
+
+	result := make([][]byte, 0)
+
+	for _, p := range path {
+		b, err := p.Bytes()
+		if err == nil {
+			result = append(result, b)
+		}
+	}
+
+	h.ReleaseArenas(0)
+	hasherPool.Put(h)
+
+	return result, nil
+}
+
 func (t *Txn) lookup(node interface{}, key []byte) (Node, []byte) {
 	switch n := node.(type) {
 	case nil:
@@ -232,6 +295,73 @@ func (t *Txn) lookup(node interface{}, key []byte) (Node, []byte) {
 
 		return nil, res
 
+	default:
+		panic(fmt.Sprintf("unknown node type %v", n)) //nolint:gocritic
+	}
+}
+
+func (t *Txn) lookupMerklePath(node interface{}, key []byte, path []*fastrlp.Value,
+	h *hasher, a *fastrlp.Arena) []*fastrlp.Value {
+	switch n := node.(type) {
+	case nil:
+		return nil
+
+	case *ValueNode:
+		if n.hash {
+			nc, ok, err := GetNode(n.buf, t.storage)
+			if err != nil {
+				panic(err) //nolint:gocritic
+			}
+
+			if !ok {
+				return nil
+			}
+
+			path := t.lookupMerklePath(nc, key, path, h, a)
+
+			return path
+		}
+
+		if len(key) == 0 {
+			_, rlp := t.rlp(n, h, a, 1)
+			path = append(path, rlp)
+
+			return path
+		} else {
+			return nil
+		}
+
+	case *ShortNode:
+		plen := len(n.key)
+		if plen > len(key) || !bytes.Equal(key[:plen], n.key) {
+			return nil
+		}
+
+		path := t.lookupMerklePath(n.child, key[plen:], path, h, a)
+
+		if path != nil {
+			_, rlp := t.rlp(n, h, a, 0)
+			path := append(path, rlp)
+
+			return path
+		} else {
+			return nil
+		}
+
+	case *FullNode:
+		if len(key) == 0 {
+			path := t.lookupMerklePath(n.value, key, path, h, a)
+			_, rlp := t.rlp(n, h, a, 1)
+			path = append(path, rlp)
+
+			return path
+		} else {
+			path := t.lookupMerklePath(n.getEdge(key[0]), key[1:], path, h, a)
+			_, rlp := t.rlp(n, h, a, 1)
+			path = append(path, rlp)
+
+			return path
+		}
 	default:
 		panic(fmt.Sprintf("unknown node type %v", n)) //nolint:gocritic
 	}
