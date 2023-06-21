@@ -41,12 +41,16 @@ func (m *mockSnapshot) GetAccount(addr types.Address) (*Account, error) {
 	return acct, nil
 }
 
+func (m *mockSnapshot) GetAccountProof(addr types.Address) ([][]byte, error) {
+	return nil, nil
+}
+
 func (m *mockSnapshot) GetCode(hash types.Hash) ([]byte, bool) {
 	return nil, false
 }
 
-func (m *mockSnapshot) GetContractStorageData(addr types.Address, root types.Hash) ([]byte, types.Hash, error) {
-	return nil, types.Hash{}, nil
+func (m *mockSnapshot) GetStorageProof(addr types.Address, root types.Hash, slot types.Hash) ([][]byte, error) {
+	return nil, nil
 }
 
 func newStateWithPreState(preState map[types.Address]*PreState) readSnapshot {

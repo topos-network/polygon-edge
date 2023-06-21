@@ -9,11 +9,16 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
+type StorageUpdate struct {
+	Slot        string
+	Value       string
+	MerkleProof []string
+}
+
 type Storage struct {
 	Account     string
-	Hash        types.Hash
-	RootRlpHash []byte
-	Storage     []structtracer.StorageUpdate
+	StorageRoot string
+	Storage     []StorageUpdate
 }
 
 type ProverAccount struct {
@@ -23,6 +28,11 @@ type ProverAccount struct {
 	CodeHash string
 }
 
+type ProverAccountProof struct {
+	Account     string
+	MerkleProof []string
+}
+
 type ProverData struct {
 	BlockHeader   types.Header
 	Accounts      interface{}
@@ -30,6 +40,7 @@ type ProverData struct {
 	Transactions  interface{}
 	Receipts      interface{}
 	ContractCodes interface{}
+	State         interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {
