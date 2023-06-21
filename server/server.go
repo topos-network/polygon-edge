@@ -413,7 +413,7 @@ func getAccountImpl(state state.State, root types.Hash, addr types.Address) (*st
 	return account, nil
 }
 
-// getAccountImpl is used for fetching account state from both TxPool and JSON-RPC
+// getAccountProofImpl is used for fetching account state from both TxPool and JSON-RPC
 func getAccountProofImpl(state state.State, root types.Hash, addr types.Address) ([][]byte, error) {
 	snap, err := state.NewSnapshotAt(root)
 	if err != nil {
@@ -638,23 +638,23 @@ func (j *jsonRPCHub) GetStorage(stateRoot types.Hash, addr types.Address, slot t
 	return res.Bytes(), nil
 }
 
-func (j *jsonRPCHub) GetContractStorageData(stateRoot types.Hash, addr types.Address) ([]byte, types.Hash, error) {
+func (j *jsonRPCHub) GetStorageProof(stateRoot types.Hash, addr types.Address, slot types.Hash) ([][]byte, error) {
 	account, err := getAccountImpl(j.state, stateRoot, addr)
 	if err != nil {
-		return nil, types.Hash{}, err
+		return nil, err
 	}
 
 	snap, err := j.state.NewSnapshotAt(stateRoot)
 	if err != nil {
-		return nil, types.Hash{}, err
+		return nil, err
 	}
 
-	rlpRootHash, keccakRootHash, err := snap.GetContractStorageData(addr, account.Root)
+	storageProof, err := snap.GetStorageProof(addr, account.Root, slot)
 	if err != nil {
-		return nil, types.Hash{}, err
+		return nil, err
 	}
 
-	return rlpRootHash, keccakRootHash, nil
+	return storageProof, nil
 }
 
 func (j *jsonRPCHub) GetCode(root types.Hash, addr types.Address) ([]byte, error) {

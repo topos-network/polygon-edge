@@ -272,9 +272,5 @@ func (t *Txn) rlp(node Node, h *hasher, a *fastrlp.Arena, d int) (*fastrlp.Value
 		t.batch.Put(tmp, h.buf)
 	}
 
-	if t.rootHashes != nil {
-		t.rootHashes[hex.EncodeToString(hh)] = h.buf
-	}
-
 	return a.NewCopyBytes(hh), a.NewCopyBytes(rr)
 }

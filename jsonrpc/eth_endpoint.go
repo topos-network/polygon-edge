@@ -41,8 +41,7 @@ type ethStateStore interface {
 	GetAccount(root types.Hash, addr types.Address) (*Account, error)
 	GetAccountProof(root types.Hash, addr types.Address) ([][]byte, error)
 	GetStorage(root types.Hash, addr types.Address, slot types.Hash) ([]byte, error)
-	// Return contract storage root node hash encoded in RLP and keccak256 hash of it
-	GetContractStorageData(stateRoot types.Hash, addr types.Address) ([]byte, types.Hash, error)
+	GetStorageProof(stateRoot types.Hash, addr types.Address, slot types.Hash) ([][]byte, error)
 	GetForksInTime(blockNumber uint64) chain.ForksInTime
 	GetCode(root types.Hash, addr types.Address) ([]byte, error)
 }
@@ -799,18 +798,32 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 
 	for account, accountData := range accounts {
 		if accountData.CodeHash != EmptyCodeHash {
+			storageUpdates := make([]prover.StorageUpdate, 0)
+
 			// Account has code
-			rlpRootData, storageHash, err := e.store.GetContractStorageData(header.StateRoot,
-				types.StringToAddress(account))
-			if err != nil {
-				return nil, err
+			for _, storageChange := range storageChanges[account] {
+				storageMerkleProof, err := e.store.GetStorageProof(header.StateRoot,
+					types.StringToAddress(account), storageChange.Slot)
+				if err != nil {
+					return nil, err
+				}
+
+				ss := make([]string, len(storageMerkleProof))
+				for i, s := range storageMerkleProof {
+					ss[i] = hex.EncodeToHex(s)
+				}
+
+				storageUpdates = append(storageUpdates, prover.StorageUpdate{
+					Value:       storageChange.Value.String(),
+					Slot:        storageChange.Slot.String(),
+					MerkleProof: ss,
+				})
 			}
 
 			storages = append(storages, prover.Storage{
 				Account:     account,
-				Hash:        storageHash,
-				RootRlpHash: rlpRootData,
-				Storage:     storageChanges[account],
+				StorageRoot: accountData.Root,
+				Storage:     storageUpdates,
 			})
 		}
 	}
