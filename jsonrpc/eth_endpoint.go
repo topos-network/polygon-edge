@@ -8,10 +8,14 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/0xPolygon/polygon-edge/chain"
+	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/helper/common"
+	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
+	"github.com/0xPolygon/polygon-edge/prover"
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
+	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -27,13 +31,17 @@ type ethTxPoolStore interface {
 }
 
 type Account struct {
-	Balance *big.Int
-	Nonce   uint64
+	Balance  *big.Int
+	Nonce    uint64
+	Root     types.Hash
+	CodeHash []byte
 }
 
 type ethStateStore interface {
 	GetAccount(root types.Hash, addr types.Address) (*Account, error)
+	GetAccountProof(root types.Hash, addr types.Address) ([][]byte, error)
 	GetStorage(root types.Hash, addr types.Address, slot types.Hash) ([]byte, error)
+	GetStorageProof(stateRoot types.Hash, addr types.Address, slot types.Hash) ([][]byte, error)
 	GetForksInTime(blockNumber uint64) chain.ForksInTime
 	GetCode(root types.Hash, addr types.Address) ([]byte, error)
 }
@@ -67,11 +75,16 @@ type ethBlockchainStore interface {
 	GetSyncProgression() *progress.Progression
 }
 
+type ethTracing interface {
+	TraceBlock(block *types.Block, tracer tracer.Tracer) ([]interface{}, error)
+}
+
 // ethStore provides access to the methods needed by eth endpoint
 type ethStore interface {
 	ethTxPoolStore
 	ethStateStore
 	ethBlockchainStore
+	ethTracing
 }
 
 // Eth is the eth jsonrpc endpoint
@@ -85,6 +98,8 @@ type Eth struct {
 
 var (
 	ErrInsufficientFunds = errors.New("insufficient funds for execution")
+	EmptyCodeHash        = hex.EncodeToHex([]byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125,
+		178, 220, 199, 3, 192, 229, 0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112})
 )
 
 // ChainId returns the chain id of the client
@@ -708,4 +723,162 @@ func (e *Eth) UninstallFilter(id string) (bool, error) {
 // Unsubscribe uninstalls a filter in a websocket
 func (e *Eth) Unsubscribe(id string) (bool, error) {
 	return e.filterManager.Uninstall(id), nil
+}
+
+func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
+	// Get block metadata
+	header, err := GetHeaderFromBlockNumberOrHash(block, e.store)
+	if err != nil {
+		return nil, err
+	}
+
+	fullBlock, valid := e.store.GetBlockByHash(header.Hash, true)
+	if !valid {
+		return nil, fmt.Errorf("failed to get block by hash %s", header.Hash)
+	}
+
+	// Parse to/from accounts
+	accountsStr, err := prover.ParseBlockAccounts(fullBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	// Trace the block
+	tracer, _, err := NewTracer(&TraceConfig{
+		EnableMemory:     true,
+		EnableReturnData: true,
+		DisableStack:     false,
+		DisableStorage:   false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Run tracer on the current block
+	tracesJSON, err := e.store.TraceBlock(fullBlock, tracer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse contract accounts called from smart contract execution
+	contractAccounts, err := prover.ParseContractCodeForAccounts(tracesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	accountsStr = append(accountsStr, contractAccounts...)
+
+	accounts := make(map[string]*prover.ProverAccount)
+
+	// Get all the data for the accounts
+	for _, accountStr := range accountsStr {
+		accountAddress := types.StringToAddress(accountStr)
+
+		// Get the full account nonce, balance, state root and code hash
+		acc, err := e.store.GetAccount(header.StateRoot, accountAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		accounts[accountAddress.String()] = &prover.ProverAccount{
+			Nonce:    acc.Nonce,
+			Balance:  acc.Balance,
+			Root:     acc.Root.String(),
+			CodeHash: hex.EncodeToHex(acc.CodeHash),
+		}
+	}
+
+	// Get storage data for all accounts from this block
+	storages := make([]prover.Storage, 0)
+
+	storageChanges, err := prover.ParseTraceForStorageChanges(tracesJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	for account, accountData := range accounts {
+		if accountData.CodeHash != EmptyCodeHash {
+			storageUpdates := make([]prover.StorageUpdate, 0)
+
+			// Account has code
+			for _, storageChange := range storageChanges[account] {
+				storageMerkleProof, err := e.store.GetStorageProof(header.StateRoot,
+					types.StringToAddress(account), storageChange.Slot)
+				if err != nil {
+					return nil, err
+				}
+
+				ss := make([]string, len(storageMerkleProof))
+				for i, s := range storageMerkleProof {
+					ss[i] = hex.EncodeToHex(s)
+				}
+
+				storageUpdates = append(storageUpdates, prover.StorageUpdate{
+					Value:       storageChange.Value.String(),
+					Slot:        storageChange.Slot.String(),
+					MerkleProof: ss,
+				})
+			}
+
+			storages = append(storages, prover.Storage{
+				Account:     account,
+				StorageRoot: accountData.Root,
+				Storage:     storageUpdates,
+			})
+		}
+	}
+
+	// All transactions in the block
+	transactions := fullBlock.Transactions
+
+	// Receipts from this block
+	receipts, err := e.store.GetReceiptsByHash(header.Hash)
+	if err != nil {
+		return nil, err
+	}
+
+	// Contract code map CodeHash -> ContractCode
+	contractCodes := make(map[string]string)
+
+	for account, accountData := range accounts {
+		if accountData.CodeHash != EmptyCodeHash {
+			contractCode, err := e.store.GetCode(header.StateRoot, types.StringToAddress(account))
+			if err != nil {
+				return nil, err
+			}
+
+			codeHash := crypto.Keccak256(contractCode)
+			contractCodes[hex.EncodeToHex(codeHash)] = hex.EncodeToHex(contractCode)
+		}
+	}
+
+	state := make([]prover.ProverAccountProof, 0)
+
+	// Get state Merkle proofs for all accounts
+	for account := range accounts {
+		accountProof, err := e.store.GetAccountProof(header.StateRoot, types.StringToAddress(account))
+		if err != nil {
+			return nil, err
+		}
+
+		aa := make([]string, 0)
+		for _, proof := range accountProof {
+			aa = append(aa, hex.EncodeToHex(proof))
+		}
+
+		state = append(state, prover.ProverAccountProof{
+			Account:     account,
+			MerkleProof: aa,
+		})
+	}
+
+	return &prover.ProverData{
+		BlockHeader:   *header,
+		Accounts:      accounts,
+		Storage:       storages,
+		Transactions:  transactions,
+		Receipts:      receipts,
+		ContractCodes: contractCodes,
+		State:         state,
+	}, nil
 }
