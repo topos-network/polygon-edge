@@ -11,7 +11,6 @@ import (
 
 type StorageUpdate struct {
 	Slot        string
-	Value       string
 	MerkleProof []string
 }
 
@@ -34,13 +33,15 @@ type ProverAccountProof struct {
 }
 
 type ProverData struct {
-	BlockHeader   types.Header
-	Accounts      interface{}
-	Storage       interface{}
-	Transactions  interface{}
-	Receipts      interface{}
-	ContractCodes interface{}
-	State         interface{}
+	ChainId             interface{}
+	BlockHeader         types.Header
+	PreviousBlockHeader types.Header
+	Accounts            interface{}
+	PreviousStorage     interface{}
+	Transactions        interface{}
+	Receipts            interface{}
+	ContractCodes       interface{}
+	PreviousState       interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {
