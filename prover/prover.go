@@ -33,7 +33,7 @@ type ProverAccountProof struct {
 }
 
 type ProverData struct {
-	ChainId             interface{}
+	ChainID             interface{}
 	BlockHeader         types.Header
 	PreviousBlockHeader types.Header
 	Accounts            interface{}

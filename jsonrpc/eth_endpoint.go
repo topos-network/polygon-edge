@@ -906,13 +906,13 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 		})
 	}
 
-	chainId, err := e.ChainId()
+	chainID, err := e.ChainId()
 	if err != nil {
 		return nil, err
 	}
 
 	return &prover.ProverData{
-		ChainId:             chainId,
+		ChainID:             chainID,
 		BlockHeader:         *header,
 		PreviousBlockHeader: *previousHeader,
 		Accounts:            accounts,
