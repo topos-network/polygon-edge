@@ -734,6 +734,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 
 	// Get the previous block header
 	var previousBlockNumber = BlockNumber(header.Number) - 1
+
 	previousHeader, err := GetHeaderFromBlockNumberOrHash(BlockNumberOrHash{BlockNumber: &previousBlockNumber}, e.store)
 	if err != nil {
 		return nil, err
@@ -799,7 +800,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 	// Lear of the storage changes in this block
 	storages := make([]prover.Storage, 0)
 
-	storageChanges, err := prover.ParseTraceForStorageChanges(tracesJSON)
+	storageChanges, err := prover.ParseTraceForStorageAccess(tracesJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -808,7 +809,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 	// that will be changed in this block execution
 	for account, accountData := range accounts {
 		if accountData.CodeHash != EmptyCodeHash {
-			storageUpdates := make([]prover.StorageUpdate, 0)
+			storageAccesses := make([]prover.StorageAccess, 0)
 
 			// Account is smart contract (has code)
 			for _, storageChange := range storageChanges[account] {
@@ -823,7 +824,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 					ss[i] = hex.EncodeToHex(s)
 				}
 
-				storageUpdates = append(storageUpdates, prover.StorageUpdate{
+				storageAccesses = append(storageAccesses, prover.StorageAccess{
 					Slot:        storageChange.Slot.String(),
 					MerkleProof: ss,
 				})
@@ -832,7 +833,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 			storages = append(storages, prover.Storage{
 				Account:     account,
 				StorageRoot: accountData.Root,
-				Storage:     storageUpdates,
+				Storage:     storageAccesses,
 			})
 		}
 	}
@@ -869,6 +870,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 
 	// Manually add zero account (beneficiary account)
 	zeroAccount := "0x0000000000000000000000000000000000000000"
+
 	zeroAccountData, err := e.store.GetAccount(previousHeader.StateRoot, types.StringToAddress(zeroAccount))
 	if err != nil {
 		accounts[zeroAccount] = &prover.ProverAccount{

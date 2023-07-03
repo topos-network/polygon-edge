@@ -9,7 +9,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
-type StorageUpdate struct {
+type StorageAccess struct {
 	Slot        string
 	MerkleProof []string
 }
@@ -17,7 +17,7 @@ type StorageUpdate struct {
 type Storage struct {
 	Account     string
 	StorageRoot string
-	Storage     []StorageUpdate
+	Storage     []StorageAccess
 }
 
 type ProverAccount struct {
@@ -78,8 +78,8 @@ func ParseContractCodeForAccounts(tracesJSON []interface{}) ([]string, error) {
 	return result, nil
 }
 
-func ParseTraceForStorageChanges(tracesJSON []interface{}) (map[string][]structtracer.StorageUpdate, error) {
-	var storageChanges = make(map[string][]structtracer.StorageUpdate)
+func ParseTraceForStorageAccess(tracesJSON []interface{}) (map[string][]structtracer.StorageAccess, error) {
+	var storageChanges = make(map[string][]structtracer.StorageAccess)
 
 	for _, traceJSON := range tracesJSON {
 		trace, ok := traceJSON.(*structtracer.StructTraceResult)
@@ -88,7 +88,9 @@ func ParseTraceForStorageChanges(tracesJSON []interface{}) (map[string][]structt
 		}
 
 		for account, storage := range trace.StorageUpdates {
-			storageChanges[account.String()] = append(storageChanges[account.String()], storage...)
+			for storageAccess := range storage {
+				storageChanges[account.String()] = append(storageChanges[account.String()], storageAccess)
+			}
 		}
 	}
 
