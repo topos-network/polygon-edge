@@ -98,7 +98,8 @@ type Eth struct {
 
 var (
 	ErrInsufficientFunds = errors.New("insufficient funds for execution")
-	EmptyCodeHash        = hex.EncodeToHex([]byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125,
+	//Empty code hash is 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+	EmptyCodeHash = hex.EncodeToHex([]byte{197, 210, 70, 1, 134, 247, 35, 60, 146, 126, 125,
 		178, 220, 199, 3, 192, 229, 0, 182, 83, 202, 130, 39, 59, 123, 250, 216, 4, 93, 133, 164, 112})
 )
 
@@ -863,30 +864,13 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 
 			codeHash := crypto.Keccak256(contractCode)
 			contractCodes[hex.EncodeToHex(codeHash)] = hex.EncodeToHex(contractCode)
+		} else {
+			// Add empty code hash
+			contractCodes[EmptyCodeHash] = "0x"
 		}
 	}
 
 	state := make([]prover.ProverAccountProof, 0)
-
-	// Manually add zero account (beneficiary account)
-	zeroAccount := "0x0000000000000000000000000000000000000000"
-
-	zeroAccountData, err := e.store.GetAccount(previousHeader.StateRoot, types.StringToAddress(zeroAccount))
-	if err != nil {
-		accounts[zeroAccount] = &prover.ProverAccount{
-			Nonce:    0,
-			Balance:  big.NewInt(0),
-			Root:     types.Hash{}.String(),
-			CodeHash: types.Hash{}.String(),
-		}
-	} else {
-		accounts[zeroAccount] = &prover.ProverAccount{
-			Nonce:    zeroAccountData.Nonce,
-			Balance:  zeroAccountData.Balance,
-			Root:     zeroAccountData.Root.String(),
-			CodeHash: hex.EncodeToHex(zeroAccountData.CodeHash),
-		}
-	}
 
 	// Get state Merkle proofs for all accounts
 	for account := range accounts {
@@ -905,6 +889,24 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 			MerkleProof: aa,
 		})
 	}
+
+	// Add zero account (block beneficiary) to the state
+	zeroAccount := "0x0000000000000000000000000000000000000000"
+
+	zeroAccountProof, err := e.store.GetAccountProof(previousHeader.StateRoot, types.StringToAddress(zeroAccount))
+	if err != nil {
+		return nil, err
+	}
+
+	zeroAccountProofArray := make([]string, 0)
+	for _, proof := range zeroAccountProof {
+		zeroAccountProofArray = append(zeroAccountProofArray, hex.EncodeToHex(proof))
+	}
+
+	state = append(state, prover.ProverAccountProof{
+		Account:     zeroAccount,
+		MerkleProof: zeroAccountProofArray,
+	})
 
 	chainID, err := e.ChainId()
 	if err != nil {
