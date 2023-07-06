@@ -798,7 +798,7 @@ func (e *Eth) GetProverData(block BlockNumberOrHash) (interface{}, error) {
 		}
 	}
 
-	// Lear of the storage changes in this block
+	// Learn of the storage changes in this block
 	storages := make([]prover.Storage, 0)
 
 	storageChanges, err := prover.ParseTraceForStorageAccess(tracesJSON)
