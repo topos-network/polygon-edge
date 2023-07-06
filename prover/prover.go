@@ -9,16 +9,15 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
-type StorageUpdate struct {
+type StorageAccess struct {
 	Slot        string
-	Value       string
 	MerkleProof []string
 }
 
 type Storage struct {
 	Account     string
 	StorageRoot string
-	Storage     []StorageUpdate
+	Storage     []StorageAccess
 }
 
 type ProverAccount struct {
@@ -34,13 +33,15 @@ type ProverAccountProof struct {
 }
 
 type ProverData struct {
-	BlockHeader   types.Header
-	Accounts      interface{}
-	Storage       interface{}
-	Transactions  interface{}
-	Receipts      interface{}
-	ContractCodes interface{}
-	State         interface{}
+	ChainID             interface{}
+	BlockHeader         types.Header
+	PreviousBlockHeader types.Header
+	Accounts            interface{}
+	PreviousStorage     interface{}
+	Transactions        interface{}
+	Receipts            interface{}
+	ContractCodes       interface{}
+	PreviousState       interface{}
 }
 
 func ParseBlockAccounts(block *types.Block) ([]string, error) {
@@ -77,8 +78,8 @@ func ParseContractCodeForAccounts(tracesJSON []interface{}) ([]string, error) {
 	return result, nil
 }
 
-func ParseTraceForStorageChanges(tracesJSON []interface{}) (map[string][]structtracer.StorageUpdate, error) {
-	var storageChanges = make(map[string][]structtracer.StorageUpdate)
+func ParseTraceForStorageAccess(tracesJSON []interface{}) (map[string][]structtracer.StorageAccess, error) {
+	var storageChanges = make(map[string][]structtracer.StorageAccess)
 
 	for _, traceJSON := range tracesJSON {
 		trace, ok := traceJSON.(*structtracer.StructTraceResult)
@@ -87,7 +88,9 @@ func ParseTraceForStorageChanges(tracesJSON []interface{}) (map[string][]structt
 		}
 
 		for account, storage := range trace.StorageUpdates {
-			storageChanges[account.String()] = append(storageChanges[account.String()], storage...)
+			for storageAccess := range storage {
+				storageChanges[account.String()] = append(storageChanges[account.String()], storageAccess)
+			}
 		}
 	}
 
