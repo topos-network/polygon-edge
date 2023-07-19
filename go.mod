@@ -53,7 +53,7 @@ require (
 	github.com/umbracle/ethgo v0.1.4-0.20230126112511-6a4d02533af6
 	github.com/valyala/fastjson v1.6.3 // indirect
 	go.uber.org/zap v1.22.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/tools v0.3.0
 	google.golang.org/genproto v0.0.0-20221010155953-15ba04fc1c0e
 	gopkg.in/yaml.v3 v3.0.1
@@ -210,7 +210,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
-	github.com/topos-protocol/go-topos-sequencer-client v0.0.0-20230322084800-1e8efcf8a2b6 // indirect
+	github.com/topos-protocol/go-topos-sequencer-client v0.0.0-20230719150134-37636f549da4 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.37.0 // indirect
@@ -222,9 +222,9 @@ require (
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20220617031537-928513b29760 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221002003631-540bb7301a08 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20221006150949-b44042a4b9c1 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.99.0 // indirect
@@ -234,3 +234,5 @@ require (
 	gotest.tools/v3 v3.0.2 // indirect
 	inet.af/netaddr v0.0.0-20220617031823-097006376321 // indirect
 )
+
+replace github.com/topos-network/go-topos-sequencer-client => github.com/topos-protocol/go-topos-sequencer-client v0.0.0-20230322084800-1e8efcf8a2b6
