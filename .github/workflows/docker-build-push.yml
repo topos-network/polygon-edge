@@ -2,7 +2,7 @@ name: Docker_build_push
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, port-upstream-v1.1.0] # TODO REMOVE dev branch
   pull_request:
     branches: [develop]
 
