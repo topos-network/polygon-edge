@@ -5,6 +5,8 @@ on:
     branches: [develop]
   pull_request:
     branches: [develop]
+  release:
+    types: [created]
 
 env:
   REGISTRY: ghcr.io
@@ -38,6 +40,12 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=test,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Push to GitHub Container Registry
         uses: docker/build-push-action@v3
