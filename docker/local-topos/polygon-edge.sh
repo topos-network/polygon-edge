@@ -7,6 +7,7 @@ CONTRACTS_PATH=/contracts
 GENESIS_PATH=/data/genesis.json
 CHAIN_ID="${CHAIN_ID:-100}" # 100 is Edge's default value
 NUMBER_OF_NODES="${NUMBER_OF_NODES:-4}" # Number of subnet nodes in the consensus
+BLOCK_TIME="${BLOCK_TIME:-2s}" # Block time in seconds
 BOOTNODE_DOMAIN_NAME="${BOOTNODE_DOMAIN_NAME:-node-1}"
 CHAIN_CUSTOM_OPTIONS=$(tr "\n" " " << EOL
 --block-gas-limit 10000000
@@ -46,6 +47,7 @@ case "$1" in
                     cd /data && /polygon-edge/polygon-edge genesis $CHAIN_CUSTOM_OPTIONS \
                       --dir genesis.json \
                       --consensus ibft \
+                      --block-time $BLOCK_TIME \
                       --ibft-validators-prefix-path data- \
                       --max-validator-count=$NUMBER_OF_NODES \
                       --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID \
@@ -75,6 +77,7 @@ case "$1" in
                     "$POLYGON_EDGE_BIN" genesis $CHAIN_CUSTOM_OPTIONS \
                       --dir "$GENESIS_PATH" \
                       --consensus polybft \
+                      --block-time $BLOCK_TIME \
                       --manifest /data/manifest.json \
                       --max-validator-count=$NUMBER_OF_NODES \
                       --bootnode /dns4/"$BOOTNODE_DOMAIN_NAME"/tcp/1478/p2p/$BOOTNODE_ID
@@ -102,6 +105,7 @@ case "$1" in
         echo "Generating genesis script..."
         "$POLYGON_EDGE_BIN" genesis --dir genesis.json \
          --consensus ibft \
+         --block-time $BLOCK_TIME \
          --ibft-validators-prefix-path data- \
          --max-validator-count=1 \
          --premine=0x4AAb25B4fAd0Beaac466050f3A7142A502f4Cf0a:1000000000000000000000 \
