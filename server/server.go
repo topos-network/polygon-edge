@@ -705,7 +705,6 @@ func (j *jsonRPCHub) GetAccount(root types.Hash, addr types.Address) (*jsonrpc.A
 	return account, nil
 }
 
-// TODO: use eth_getProof once it is available in Polygon Edge
 func (j *jsonRPCHub) GetAccountProof(root types.Hash, addr types.Address) ([][]byte, error) {
 	proof, err := getAccountProofImpl(j.state, root, addr)
 	if err != nil {
@@ -736,7 +735,6 @@ func (j *jsonRPCHub) GetStorage(stateRoot types.Hash, addr types.Address, slot t
 	return res.Bytes(), nil
 }
 
-// TODO: use eth_getProof once it is available in Polygon Edge
 func (j *jsonRPCHub) GetStorageProof(stateRoot types.Hash, addr types.Address, slot types.Hash) ([][]byte, error) {
 	account, err := getAccountImpl(j.state, stateRoot, addr)
 	if err != nil {
