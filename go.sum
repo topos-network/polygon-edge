@@ -688,6 +688,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJ
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
 github.com/tinylib/msgp v1.1.8 h1:FCXC1xanKO4I8plpHGH2P7koL/RzZs12l/+r7vakfm0=
 github.com/tinylib/msgp v1.1.8/go.mod h1:qkpG+2ldGg4xRFmx+jfTvZPxfGFhi64BcnL9vkCm/Tw=
+github.com/topos-protocol/go-topos-sequencer-client v0.0.0-20230719150134-37636f549da4 h1:Nj+BFLcjdabxDNG94kRdDes97TVZ3NnmSoxBTY2eN3w=
+github.com/topos-protocol/go-topos-sequencer-client v0.0.0-20230719150134-37636f549da4/go.mod h1:Dt4YfK6HlJg3sdqRpvzk/zab7V+CDS/cQaZLYjmkcfE=
 github.com/trailofbits/go-fuzz-utils v0.0.0-20210901195358-9657fcfd256c h1:4WU+p200eLYtBsx3M5CKXvkjVdf5SC3W9nMg37y0TFI=
 github.com/trailofbits/go-fuzz-utils v0.0.0-20210901195358-9657fcfd256c/go.mod h1:f3jBhpWvuZmue0HZK52GzRHJOYHYSILs/c8+K2S/J+o=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
