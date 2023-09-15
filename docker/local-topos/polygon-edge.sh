@@ -111,7 +111,7 @@ case "$1" in
          --premine=0x4AAb25B4fAd0Beaac466050f3A7142A502f4Cf0a:1000000000000000000000 \
          --bootnode /ip4/127.0.0.1/tcp/10001/p2p/$NODE_ID
 
-        echo "Executing polygon-edge standalone node..."
+        echo "Executing polygon-edge standalone node with block time " $BLOCK_TIME
         exec "$POLYGON_EDGE_BIN" server --data-dir ./data-1 --chain genesis.json
     ;;    
 
