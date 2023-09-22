@@ -144,7 +144,7 @@ func DefaultConfig() *Config {
 		WebSocketReadLimit:         DefaultWebSocketReadLimit,
 		RelayerTrackerPollInterval: DefaultRelayerTrackerPollInterval,
 		MetricsInterval:            DefaultMetricsInterval,
-		ToposSequencerAddr:       "",
+		ToposSequencerAddr:         "",
 	}
 }
 
