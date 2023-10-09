@@ -115,7 +115,7 @@ case "$1" in
          --bootnode /ip4/127.0.0.1/tcp/10001/p2p/$NODE_ID
 
         echo "Executing polygon-edge standalone node with block time " $BLOCK_TIME
-        exec "$POLYGON_EDGE_BIN" server --data-dir ./data-1 --chain genesis.json
+        exec "$POLYGON_EDGE_BIN" server --data-dir ./data-1 --chain genesis.json --jsonrpc :8545
     ;;    
 
     *)
